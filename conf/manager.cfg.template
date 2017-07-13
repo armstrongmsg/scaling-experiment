@@ -1,0 +1,8 @@
+[manager]
+plugin = 
+cluster_size = 
+flavor_id = 
+# For spark plugin it must be a sahara image 
+image_id = 
+bigsea_username = 
+bigsea_password = 
