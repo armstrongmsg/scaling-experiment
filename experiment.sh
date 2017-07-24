@@ -3,6 +3,9 @@
 REPS=$1
 source conf/experiment.cfg
 
+DATE_TIME="`date +%Y-%m-%d_%H-%M-%S`"
+EXPERIMENT_CPU_DATA_DIR="results/output/cpu_data_$DATE_TIME"
+
 for rep in `seq 1 $REPS`
 do
 	echo "rep:$rep"
@@ -15,8 +18,9 @@ do
 		do
 			echo "conf:$conf"			
 
-			cp $TREATMENTS_DIR"/client_bigsea.cfg."$conf "conf/client_bigsea.cfg"
-			APP_ID="`python $CLIENT_SCRIPT conf $MANAGER_IP $MANAGER_PORT $cap`"
+			cp "$TREATMENTS_DIR/$conf" "conf/scaling.cfg"
+			cp "$TREATMENTS_DIR/application.cfg" "conf/application.cfg"
+			APP_ID="`python scripts/client/client.py conf $MANAGER_IP $MANAGER_PORT $cap`"
 			APP_ID="`echo $APP_ID | tr -d '"'`"
 
 			STATUS=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"status\"]"`
@@ -27,11 +31,11 @@ do
 
 				for instance_id in $INSTANCES_IDS
 				do
-					CPU_DATA_DIR="cpu_data/$conf/$APP_ID"
+					CPU_DATA_DIR="$EXPERIMENT_CPU_DATA_DIR/$conf/$APP_ID"
                                   
 					mkdir -p $CPU_DATA_DIR
 
-					bash scripts/get_cpu_usage.sh $instance_id 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data"
+					bash scripts/utils/get_cpu_usage.sh $instance_id 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data"
 				done
 
 				sleep 1
@@ -44,3 +48,6 @@ do
 		done
 	done
 done
+
+cp app_conf.txt $EXPERIMENT_CPU_DATA_DIR
+cp -r $TREATMENTS_DIR $EXPERIMENT_CPU_DATA_DIR

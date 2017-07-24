@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source experiment.cfg
+source conf/experiment.cfg
 
 CAPS_LOG_FILE="cap.log"
 APPLICATION_TIME_LOG_FILE="application_time.log"

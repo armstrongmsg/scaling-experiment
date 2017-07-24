@@ -10,11 +10,13 @@
 *.swp
 *.png
 *.pyc
+conf/application.cfg
 conf/client_bigsea.cfg
 conf/experiment.cfg
 conf/manager.cfg
 conf/client_bigsea.cfg
 conf/scaler.cfg
+conf/scaling.cfg
 cpu_data*
 results
 infra/*.cfg

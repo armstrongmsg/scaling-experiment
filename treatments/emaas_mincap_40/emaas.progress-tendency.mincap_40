@@ -1,0 +1,13 @@
+[scaler]
+starting_cap = 50
+scaler_plugin = progress-tendency
+actuator = kvm-tunnel
+metric_source = monasca
+check_interval = 10
+trigger_down = 10
+trigger_up = 10
+min_cap = 40
+max_cap = 100
+actuation_size = 25
+metric_rounding = 2
+

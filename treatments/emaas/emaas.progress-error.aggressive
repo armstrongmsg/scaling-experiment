@@ -1,0 +1,14 @@
+[scaler]
+starting_cap = 50
+scaler_plugin = progress-error
+actuator = kvm-tunnel
+metric_source = monasca
+check_interval = 10
+trigger_down = 0
+trigger_up = 0
+min_cap = 10
+max_cap = 100
+actuation_size = 25
+metric_rounding = 2
+total_tasks = 0
+spark_master_ip = 0.0.0.0
