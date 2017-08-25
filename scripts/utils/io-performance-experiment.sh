@@ -2,11 +2,11 @@
 
 for i in `seq 1 $1`
 do
-	for size in 1000
+	for size in 5000
 	do
 		for n_threads in 1
 		do
-			for block_size in 4 16 64
+			for block_size in 4
 			do
 
 				./run-io-benchmarks.sh $size $block_size $n_threads $2
@@ -15,5 +15,5 @@ do
 		done
 	done
 	
-	sleep 3600
+	sleep 1200
 done

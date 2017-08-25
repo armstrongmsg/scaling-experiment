@@ -4,7 +4,7 @@ size=$1
 block_size=$2
 n_threads=$3
 instance_ip=$4
-fsync_freq=10000
+fsync_freq=1
 
 
 #
@@ -12,7 +12,10 @@ fsync_freq=10000
 #
 
 fio_size=`echo "$size/$n_threads" | bc`
-throughput_fio=`ssh ubuntu@$instance_ip fio --name=randwrite --ioengine=libaio --iodepth=1 --rw=readwrite --bs="$block_size""K" --direct=1 --size="$fio_size""M" --numjobs=$n_threads | grep WRITE | awk -F ',' {'print $2'} | awk -F '=' {'print $2'} | awk -F 'KB/s' {'print $1'}`
+fio_output="`ssh ubuntu@$instance_ip fio --name=randwrite --ioengine=libaio --rw=write --bs="$block_size""K" --size="$fio_size""M" --numjobs=$n_threads`"
+
+throughput_fio="`echo "$fio_output" | grep WRITE | awk -F ',' {'print $2'} | awk -F '=' {'print $2'} | awk -F 'KB/s' {'print $1'}`"
+iops_fio="`echo "$fio_output" | grep "iops" | awk -F'[=,]' {'print $6'}`"
 
 sleep 2
 
@@ -22,13 +25,12 @@ sleep 2
 
 ssh ubuntu@$instance_ip sysbench --test=fileio --file-total-size=$size --file-num=1 prepare > /dev/null
 
-throughput_sysbench="`ssh ubuntu@$instance_ip sysbench --test=fileio --file-total-size="$size""M" --file-block-size="$block_size""K" --file-test-mode=seqrewr --file-fsync-freq=$fsync_freq --num-threads=$n_threads run | 
-		grep "Total transferred" | 
-		awk {'print $8'} | 
- 		awk -F"[()]" {'print $2'} | 
-		awk -F "Mb/sec" {'print $1'}`"
+sysbench_output="`ssh ubuntu@$instance_ip sysbench --test=fileio --file-total-size="$size""M" --file-block-size="$block_size""K" --file-test-mode=seqwr --file-fsync-freq=$fsync_freq --num-threads=$n_threads run`"
 
+throughput_sysbench="`echo "$sysbench_output" | grep "Total transferred" | awk {'print $8'} |  awk -F"[()]" {'print $2'} | awk -F "Mb/sec" {'print $1'}`"
 throughput_sysbench=`echo "$throughput_sysbench*1000/8.0" | bc`
+
+iops_sysbench="`echo "$sysbench_output" | grep Requests | awk {'print $1'}`"
 
 sleep 2
 
@@ -51,9 +53,10 @@ ssh ubuntu@$instance_ip rm test_file.* randwrite* ddfile
 #
 # results
 #
-echo "fio",$throughput_fio,$size,$block_size,$n_threads,"`date +%s`"
-echo "dd",$throughput_dd,$size,$block_size,$n_threads,"`date +%s`"
-echo "sys",$throughput_sysbench,$size,$block_size,$n_threads,"`date +%s`"
+
+echo "fio",$throughput_fio,$iops_fio,$size,$block_size,$n_threads,"`date +%s`"
+echo "dd",$throughput_dd,0,$size,$block_size,$n_threads,"`date +%s`"
+echo "sys",$throughput_sysbench,$iops_sysbench,$size,$block_size,$n_threads,"`date +%s`"
 
 
 sleep 2
