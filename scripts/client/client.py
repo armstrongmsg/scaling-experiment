@@ -40,6 +40,44 @@ class Scaling_Plugin:
         
         return scaling_parameters
 
+    def get_proportional_derivative_parameters(self, scaling_config):
+        scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
+        actuator = scaling_config.get('scaler', 'actuator')
+        metric_source = scaling_config.get('scaler', 'metric_source')
+        check_interval = scaling_config.getint('scaler', 'check_interval')
+        trigger_down = scaling_config.getint('scaler', 'trigger_down')
+        trigger_up = scaling_config.getint('scaler', 'trigger_up')
+        min_cap = scaling_config.getint('scaler', 'min_cap')
+        max_cap = scaling_config.getint('scaler', 'max_cap')
+        metric_rounding = scaling_config.getint('scaler', 'metric_rounding')
+        heuristic_name = scaling_config.get('scaler', 'heuristic_name')
+                
+        heuristic_options = {}
+        heuristic_options['heuristic_name'] = heuristic_name
+        
+        if heuristic_name == 'error_proportional_derivative':
+            proportional_factor = scaling_config.getfloat('scaler', 'proportional_factor')
+            derivative_factor = scaling_config.getfloat('scaler', 'derivative_factor')
+            heuristic_options['proportional_factor'] = proportional_factor
+            heuristic_options['derivative_factor'] = derivative_factor
+        elif heuristic_name == 'error_proportional':
+            conservative_factor = scaling_config.getfloat('scaler', 'conservative_factor')
+            heuristic_options['conservative_factor'] = conservative_factor
+        elif heuristic_name == 'error_proportional_up_down':
+            factor_up = scaling_config.getfloat('scaler', 'factor_up')
+            factor_down = scaling_config.getfloat('scaler', 'factor_down')
+            heuristic_options['factor_up'] = factor_up
+            heuristic_options['factor_down'] = factor_down
+            
+        scaling_parameters = {'check_interval':check_interval,
+                            'trigger_down':trigger_down, 'trigger_up':trigger_up,
+                            'min_cap':min_cap, 'max_cap':max_cap, 'metric_rounding':metric_rounding,
+                            'actuator':actuator, 'metric_source':metric_source, 
+                            'heuristic_options': heuristic_options, 
+                            'scaler_plugin':scaler_plugin}
+        
+        return scaling_parameters
+
     def get_progress_error_parameters(self, scaling_config):
         scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
         actuator = scaling_config.get('scaler', 'actuator')
@@ -71,6 +109,8 @@ class Scaling_Plugin:
             scaling_parameters = self.get_progress_error_parameters(scaling_config)    
         elif scaler_plugin == 'proportional':
             scaling_parameters = self.get_proportional_plugin_parameters(scaling_config)
+        elif scaler_plugin == 'proportional_derivative':
+            scaling_parameters = self.get_proportional_derivative_parameters(scaling_config)
             
         scaling_parameters["starting_cap"] = scaling_config.getint('scaler', 'starting_cap')
         
