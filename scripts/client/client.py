@@ -9,8 +9,6 @@ class Scaling_Plugin:
 
     def get_proportional_plugin_parameters(self, scaling_config):
         scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
-        actuator = scaling_config.get('scaler', 'actuator')
-        metric_source = scaling_config.get('scaler', 'metric_source')
         check_interval = scaling_config.getint('scaler', 'check_interval')
         trigger_down = scaling_config.getint('scaler', 'trigger_down')
         trigger_up = scaling_config.getint('scaler', 'trigger_up')
@@ -34,7 +32,6 @@ class Scaling_Plugin:
         scaling_parameters = {'check_interval':check_interval,
                             'trigger_down':trigger_down, 'trigger_up':trigger_up,
                             'min_cap':min_cap, 'max_cap':max_cap, 'metric_rounding':metric_rounding,
-                            'actuator':actuator, 'metric_source':metric_source, 
                             'heuristic_options': heuristic_options, 
                             'scaler_plugin':scaler_plugin}
         
@@ -42,8 +39,6 @@ class Scaling_Plugin:
 
     def get_proportional_derivative_parameters(self, scaling_config):
         scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
-        actuator = scaling_config.get('scaler', 'actuator')
-        metric_source = scaling_config.get('scaler', 'metric_source')
         check_interval = scaling_config.getint('scaler', 'check_interval')
         trigger_down = scaling_config.getint('scaler', 'trigger_down')
         trigger_up = scaling_config.getint('scaler', 'trigger_up')
@@ -72,7 +67,6 @@ class Scaling_Plugin:
         scaling_parameters = {'check_interval':check_interval,
                             'trigger_down':trigger_down, 'trigger_up':trigger_up,
                             'min_cap':min_cap, 'max_cap':max_cap, 'metric_rounding':metric_rounding,
-                            'actuator':actuator, 'metric_source':metric_source, 
                             'heuristic_options': heuristic_options, 
                             'scaler_plugin':scaler_plugin}
         
@@ -80,8 +74,6 @@ class Scaling_Plugin:
 
     def get_progress_error_parameters(self, scaling_config):
         scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
-        actuator = scaling_config.get('scaler', 'actuator')
-        metric_source = scaling_config.get('scaler', 'metric_source')
         check_interval = scaling_config.getint('scaler', 'check_interval')
         trigger_down = scaling_config.getint('scaler', 'trigger_down')
         trigger_up = scaling_config.getint('scaler', 'trigger_up')
@@ -94,7 +86,6 @@ class Scaling_Plugin:
                                 'trigger_down':trigger_down, 'trigger_up':trigger_up,
                                 'min_cap':min_cap, 'max_cap':max_cap,
                                 'actuation_size':actuation_size, 'metric_rounding':metric_rounding,
-                                'actuator':actuator, 'metric_source':metric_source, 
                                 "scaler_plugin":scaler_plugin}
         
         return scaling_parameters
@@ -111,9 +102,7 @@ class Scaling_Plugin:
             scaling_parameters = self.get_proportional_plugin_parameters(scaling_config)
         elif scaler_plugin == 'proportional_derivative':
             scaling_parameters = self.get_proportional_derivative_parameters(scaling_config)
-            
-        scaling_parameters["starting_cap"] = scaling_config.getint('scaler', 'starting_cap')
-        
+                    
         return scaling_parameters       
 
 def get_manager_parameters(manager_config_filename):
@@ -125,14 +114,10 @@ def get_manager_parameters(manager_config_filename):
     bigsea_username = manager_config.get('manager', 'bigsea_username')
     bigsea_password = manager_config.get('manager', 'bigsea_password')
     cluster_size = manager_config.getint('manager', 'cluster_size')
-    flavor_id = manager_config.get('manager', 'flavor_id')
-    image_id = manager_config.get('manager', 'image_id')
     
     manager_parameters["bigsea_username"] = bigsea_username
     manager_parameters["bigsea_password"] = bigsea_password
     manager_parameters["cluster_size"] = cluster_size
-    manager_parameters["flavor_id"] = flavor_id
-    manager_parameters["image_id"] = image_id
     
     return manager_parameters
 
@@ -154,16 +139,21 @@ class OS_Generic_Plugin:
         reference_value = self.application_config.getfloat('application', 'reference_value')
         log_path = self.application_config.get('application', 'log_path')
         opportunistic = self.application_config.get('application', 'opportunistic')
+        metric_source = self.application_config.get('application', 'metric_source')
+        
+        image_id = self.application_config.get('application', 'image_id')
+        flavor_id = self.application_config.get('application', 'flavor_id')
         
         scaler_plugin = self.scaling_parameters['scaler_plugin']
         actuator = self.scaling_parameters['actuator']
+        self.scaling_parameters['metric_source'] = metric_source
 
         headers = {'Content-Type': 'application/json'}
         body = dict(plugin=plugin, scaler_plugin=scaler_plugin, opportunistic=opportunistic,
             scaling_parameters=self.scaling_parameters, actuator=actuator, 
             cluster_size=self.manager_parameters["cluster_size"],
-            starting_cap=self.starting_cap, flavor_id=self.manager_parameters["flavor_id"], 
-            image_id=self.manager_parameters["image_id"], command=command,
+            starting_cap=self.starting_cap, flavor_id=flavor_id, 
+            image_id=image_id, command=command,
             reference_value=reference_value, log_path=log_path, 
             bigsea_username=self.manager_parameters["bigsea_username"], 
             bigsea_password=self.manager_parameters["bigsea_password"])
@@ -206,26 +196,42 @@ class Sahara_Plugin:
         openstack_plugin = self.application_config.get('application', 'openstack_plugin')
         job_type = self.application_config.get('application', 'job_type')
         version = '1.6.0'
-        cluster_id = self.application_config.get('application', 'cluster_id')
         slave_ng = self.application_config.get('application', 'slave_ng')
         master_ng = self.application_config.get('application', 'master_ng')
         net_id = self.application_config.get('application', 'net_id')
         opportunistic_slave_ng = self.application_config.get('application', 'opportunistic_slave_ng')
         
+        image_id = self.application_config.get('application', 'image_id')
+        flavor_id = self.application_config.get('application', 'flavor_id')
+        
+        metric_source = self.application_config.get('application', 'metric_source')
+        self.scaling_parameters['metric_source'] = metric_source
+        
+        total_tasks = 0
+        spark_master_ip = ""
+        
+        if metric_source == 'spark':
+            total_tasks = self.application_config.get('application', 'total_tasks')
+            spark_master_ip = self.application_config.get('application', 'spark_master_ip')
+        
         headers = {'Content-Type': 'application/json'}
         body = dict(plugin=plugin, scaler_plugin=self.scaling_parameters["scaler_plugin"],
-            scaling_parameters=self.scaling_parameters, cluster_size=self.manager_parameters["cluster_size"],
-            starting_cap=self.scaling_parameters["starting_cap"], actuator=self.scaling_parameters["actuator"],
-            flavor_id=self.manager_parameters["flavor_id"], image_id=self.manager_parameters["image_id"], 
-            opportunistic=opportunistic, args=args, main_class=main_class, job_template_name=job_template_name,
-            job_binary_name=job_binary_name, job_binary_url=job_binary_url,
-            input_ds_id=input_ds_id, output_ds_id=output_ds_id, 
+            scaling_parameters=self.scaling_parameters, 
+            cluster_size=self.manager_parameters["cluster_size"],
+            starting_cap=self.scaling_parameters["starting_cap"], 
+            actuator=self.scaling_parameters["actuator"],
+            flavor_id=flavor_id, image_id=image_id, 
+            opportunistic=opportunistic, args=args, main_class=main_class, 
+            job_template_name=job_template_name, job_binary_name=job_binary_name, 
+            job_binary_url=job_binary_url, input_ds_id=input_ds_id, output_ds_id=output_ds_id, 
             plugin_app=plugin_app, expected_time=expected_time, 
-            collect_period=collect_period, bigsea_username=self.manager_parameters["bigsea_username"],
-            bigsea_password=self.manager_parameters["bigsea_password"], openstack_plugin=openstack_plugin,
-            job_type=job_type, version=version, slave_ng=slave_ng, 
-            master_ng=master_ng, net_id=net_id, 
-            opportunistic_slave_ng=opportunistic_slave_ng
+            collect_period=collect_period, 
+            bigsea_username=self.manager_parameters["bigsea_username"],
+            bigsea_password=self.manager_parameters["bigsea_password"], 
+            openstack_plugin=openstack_plugin, job_type=job_type, version=version, 
+            slave_ng=slave_ng, master_ng=master_ng, net_id=net_id, 
+            opportunistic_slave_ng=opportunistic_slave_ng,
+            total_tasks=total_tasks, spark_master_ip=spark_master_ip
             )
         
         url = "http://%s:%s/manager/execute" % (self.manager_ip, self.manager_port)
@@ -237,6 +243,7 @@ def main():
     manager_ip = sys.argv[2]
     manager_port = sys.argv[3]
     starting_cap = sys.argv[4]
+    actuator = sys.argv[5]
     
     application_config = ConfigParser.RawConfigParser()
     
@@ -249,13 +256,16 @@ def main():
     plugin = application_config.get('application', 'plugin')
 
     scaling_plugin = Scaling_Plugin()
-
+    scaling_plugin_parameters = scaling_plugin.get_scaling_parameters(scaling_config_file)
+    scaling_plugin_parameters['actuator'] = actuator
+    scaling_plugin_parameters['starting_cap'] = starting_cap
+    
     if plugin == "sahara":
-        executor = Sahara_Plugin(scaling_plugin.get_scaling_parameters(scaling_config_file), 
+        executor = Sahara_Plugin(scaling_plugin_parameters, 
                      get_manager_parameters(manager_config_file), 
                      application_config, manager_ip, manager_port, starting_cap)
     elif plugin == "os_generic":
-        executor = OS_Generic_Plugin(scaling_plugin.get_scaling_parameters(scaling_config_file), 
+        executor = OS_Generic_Plugin(scaling_plugin_parameters, 
                      get_manager_parameters(manager_config_file), 
                      application_config, manager_ip, manager_port, starting_cap)
         

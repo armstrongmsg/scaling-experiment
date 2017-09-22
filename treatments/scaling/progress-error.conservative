@@ -1,0 +1,9 @@
+[scaler]
+scaler_plugin = progress-error
+check_interval = 10
+trigger_down = 20
+trigger_up = 20
+min_cap = 10
+max_cap = 100
+actuation_size = 100
+metric_rounding = 2

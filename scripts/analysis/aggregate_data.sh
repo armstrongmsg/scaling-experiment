@@ -20,18 +20,18 @@ do
 
         for instance_id in $INSTANCES_IDS
         do
-                resources_usage_filename="$resources_usage_dir"/"$instance_id".cpu_data
+			resources_usage_filename="$resources_usage_dir"/"$instance_id".cpu_data
+			resources_usage="`cat $resources_usage_filename`"
 
-		resources_usage="`cat $resources_usage_filename`"
-
-		for line in $resources_usage
-		do
-			timestamp=`echo $line | awk -F ',' '{print $1}'`
-			adjusted_timestamp=$(( $timestamp - $start_time ))
-			cap=`echo $line | awk -F ',' '{print $2}'`
-			cpu_usage=`echo $line | awk -F ',' '{print $3}'`
-			echo $adjusted_timestamp,$cap,$cpu_usage,$application_time,$instance_id,$application_id,$application_conf
-		done
+			for line in $resources_usage
+			do
+				timestamp=`echo $line | awk -F ',' '{print $1}'`
+				adjusted_timestamp=$(( $timestamp - $start_time ))
+				cap=`echo $line | awk -F ',' '{print $2}'`
+				cpu_usage=`echo $line | awk -F ',' '{print $3}'`
+				host_cpu_usage=`echo $line | awk -F ',' '{print $6}'`
+				echo $adjusted_timestamp,$cap,$cpu_usage,$host_cpu_usage,$application_time,$instance_id,$application_id,$application_conf
+			done
 
         done
 done

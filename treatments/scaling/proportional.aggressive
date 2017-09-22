@@ -1,0 +1,11 @@
+[scaler]
+scaler_plugin = proportional
+check_interval = 10
+trigger_down = 10
+trigger_up = 10
+min_cap = 10
+max_cap = 100
+metric_rounding = 2
+
+heuristic_name = error_proportional
+conservative_factor = 2

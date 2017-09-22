@@ -17,7 +17,7 @@ class Monasca_Monitor:
 
         self._get_monasca_client()
 
-    def get_measurements(self, metric_name, dimensions, start_time):
+    def get_measurements(self, metric_name, dimensions, start_time='2014-01-01T00:00:00Z'):
         measurements = []
         try:
             monasca_client = self._get_monasca_client()

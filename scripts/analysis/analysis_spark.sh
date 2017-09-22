@@ -2,10 +2,12 @@
 
 source conf/experiment.cfg
 
+START_CAP=$1
+RESULTS_TO_PROCESS=$2
+
 CAPS_LOG_FILE="cap.log"
 APPLICATION_TIME_LOG_FILE="application_time.log"
-APPLICATION_CONF_FILE="app_conf.txt"
-START_CAP=$1
+APPLICATION_CONF_FILE="$RESULTS_TO_PROCESS/app_conf.txt"
 
 applications="`cat $APPLICATION_CONF_FILE | awk -F "|" {'print $1'}`"
 
@@ -16,7 +18,7 @@ do
 	application_time=`cat $APPLICATION_CONF_FILE | grep "$application_id|" | awk -F '|' '{print $4}'`
 	application_conf="`cat $APPLICATION_CONF_FILE | grep "$application_id|" | awk -F '|' '{print $2}'`"
 	
-	resources_usage_dir="cpu_data/$application_conf/$application_id"
+	resources_usage_dir="$RESULTS_TO_PROCESS/$application_conf/$application_id"
 	resources_usage=0
 
 	for instance_id in $INSTANCES_IDS

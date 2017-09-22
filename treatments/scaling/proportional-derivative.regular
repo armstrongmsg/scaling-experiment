@@ -1,0 +1,12 @@
+[scaler]
+scaler_plugin = proportional_derivative
+check_interval = 10
+trigger_down = 0
+trigger_up = 0
+min_cap = 10
+max_cap = 100
+metric_rounding = 2
+
+heuristic_name = error_proportional_derivative
+proportional_factor = 1
+derivative_factor = 1
