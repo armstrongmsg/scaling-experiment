@@ -71,3 +71,39 @@ ggplot(aggregated.results, aes(adjusted_timestamp, cap, group=interaction(applic
   xlab("Time") +
   ylab("CPU cap") +
   theme_white()
+
+# -------------------------------------------------------------------------------------------------------------
+# I/O validation
+# -------------------------------------------------------------------------------------------------------------
+
+theme_white3 <- function() {
+  theme_update(
+    plot.title = element_text(size=22),
+    axis.text.y =element_text(size=19),
+    axis.title = element_text(size=20),
+    legend.title = element_text(size = 16),
+    legend.text = element_text(size = 14),
+    axis.text.x = element_text(size=22, angle = 0, hjust = 1),
+    strip.text.y = element_text(size = 18, angle = 90),
+    strip.text.x = element_text(size = 18, angle = 0)
+  )
+}
+
+theme_set(theme_bw())
+theme_white3()
+
+io.validation.review$config_io <- as.factor(io.validation.review$config_io)
+levels(io.validation.review$config_io) <- c("KVM I/O plugin", "KVM CPU cap plugin")
+ggplot(io.validation.review, aes(cap, execution_time)) + 
+  geom_boxplot() + 
+  facet_grid(. ~ config_io) + 
+  theme_set(theme_bw()) +
+  xlab("Cap") + 
+  ylab("Execution time (in seconds)")
+
+io.validation.review %>% 
+  select(execution_time, cap, config_io) %>% 
+  group_by(config_io, cap) %>% 
+  summarise(mean(execution_time), median(execution_time))
+
+
