@@ -8,4 +8,4 @@ max_cap = 100
 metric_rounding = 2
 
 heuristic_name = error_proportional
-conservative_factor = 1
+proportional_factor = 1
