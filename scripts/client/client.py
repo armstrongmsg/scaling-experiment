@@ -21,8 +21,8 @@ class Scaling_Plugin:
         heuristic_options['heuristic_name'] = heuristic_name
                 
         if heuristic_name == 'error_proportional':
-            conservative_factor = scaling_config.getfloat('scaler', 'conservative_factor')
-            heuristic_options['conservative_factor'] = conservative_factor
+            proportional_factor = scaling_config.getfloat('scaler', 'proportional_factor')
+            heuristic_options['proportional_factor'] = proportional_factor
         elif heuristic_name == 'error_proportional_up_down':
             factor_up = scaling_config.getfloat('scaler', 'factor_up')
             factor_down = scaling_config.getfloat('scaler', 'factor_down')
@@ -55,14 +55,6 @@ class Scaling_Plugin:
             derivative_factor = scaling_config.getfloat('scaler', 'derivative_factor')
             heuristic_options['proportional_factor'] = proportional_factor
             heuristic_options['derivative_factor'] = derivative_factor
-        elif heuristic_name == 'error_proportional':
-            conservative_factor = scaling_config.getfloat('scaler', 'conservative_factor')
-            heuristic_options['conservative_factor'] = conservative_factor
-        elif heuristic_name == 'error_proportional_up_down':
-            factor_up = scaling_config.getfloat('scaler', 'factor_up')
-            factor_down = scaling_config.getfloat('scaler', 'factor_down')
-            heuristic_options['factor_up'] = factor_up
-            heuristic_options['factor_down'] = factor_down
             
         scaling_parameters = {'check_interval':check_interval,
                             'trigger_down':trigger_down, 'trigger_up':trigger_up,
@@ -114,10 +106,12 @@ def get_manager_parameters(manager_config_filename):
     bigsea_username = manager_config.get('manager', 'bigsea_username')
     bigsea_password = manager_config.get('manager', 'bigsea_password')
     cluster_size = manager_config.getint('manager', 'cluster_size')
+    percentage = manager_config.getint('manager', 'percentage')
     
     manager_parameters["bigsea_username"] = bigsea_username
     manager_parameters["bigsea_password"] = bigsea_password
     manager_parameters["cluster_size"] = cluster_size
+    manager_parameters["percentage"] = percentage
     
     return manager_parameters
 
@@ -200,6 +194,7 @@ class Sahara_Plugin:
         master_ng = self.application_config.get('application', 'master_ng')
         net_id = self.application_config.get('application', 'net_id')
         opportunistic_slave_ng = self.application_config.get('application', 'opportunistic_slave_ng')
+        dependencies = ""
         
         image_id = self.application_config.get('application', 'image_id')
         flavor_id = self.application_config.get('application', 'flavor_id')
@@ -218,6 +213,7 @@ class Sahara_Plugin:
         body = dict(plugin=plugin, scaler_plugin=self.scaling_parameters["scaler_plugin"],
             scaling_parameters=self.scaling_parameters, 
             cluster_size=self.manager_parameters["cluster_size"],
+            percentage=self.manager_parameters["percentage"],
             starting_cap=self.scaling_parameters["starting_cap"], 
             actuator=self.scaling_parameters["actuator"],
             flavor_id=flavor_id, image_id=image_id, 
@@ -225,7 +221,7 @@ class Sahara_Plugin:
             job_template_name=job_template_name, job_binary_name=job_binary_name, 
             job_binary_url=job_binary_url, input_ds_id=input_ds_id, output_ds_id=output_ds_id, 
             plugin_app=plugin_app, expected_time=expected_time, 
-            collect_period=collect_period, 
+            collect_period=collect_period, dependencies=dependencies,
             bigsea_username=self.manager_parameters["bigsea_username"],
             bigsea_password=self.manager_parameters["bigsea_password"], 
             openstack_plugin=openstack_plugin, job_type=job_type, version=version, 
