@@ -105,12 +105,10 @@ def get_manager_parameters(manager_config_filename):
     
     bigsea_username = manager_config.get('manager', 'bigsea_username')
     bigsea_password = manager_config.get('manager', 'bigsea_password')
-    cluster_size = manager_config.getint('manager', 'cluster_size')
     percentage = manager_config.getint('manager', 'percentage')
     
     manager_parameters["bigsea_username"] = bigsea_username
     manager_parameters["bigsea_password"] = bigsea_password
-    manager_parameters["cluster_size"] = cluster_size
     manager_parameters["percentage"] = percentage
     
     return manager_parameters
@@ -138,6 +136,8 @@ class OS_Generic_Plugin:
         image_id = self.application_config.get('application', 'image_id')
         flavor_id = self.application_config.get('application', 'flavor_id')
         
+        cluster_size = self.application_config.getint('application', 'cluster_size')
+        
         scaler_plugin = self.scaling_parameters['scaler_plugin']
         actuator = self.scaling_parameters['actuator']
         self.scaling_parameters['metric_source'] = metric_source
@@ -145,10 +145,9 @@ class OS_Generic_Plugin:
         headers = {'Content-Type': 'application/json'}
         body = dict(plugin=plugin, scaler_plugin=scaler_plugin, opportunistic=opportunistic,
             scaling_parameters=self.scaling_parameters, actuator=actuator, 
-            cluster_size=self.manager_parameters["cluster_size"],
             starting_cap=self.starting_cap, flavor_id=flavor_id, 
             image_id=image_id, command=command,
-            reference_value=reference_value, log_path=log_path, 
+            reference_value=reference_value, log_path=log_path, cluster_size=cluster_size,
             bigsea_username=self.manager_parameters["bigsea_username"], 
             bigsea_password=self.manager_parameters["bigsea_password"])
 
@@ -196,6 +195,8 @@ class Sahara_Plugin:
         opportunistic_slave_ng = self.application_config.get('application', 'opportunistic_slave_ng')
         dependencies = ""
         
+        cluster_size = self.application_config.getint('application', 'cluster_size')
+        
         image_id = self.application_config.get('application', 'image_id')
         flavor_id = self.application_config.get('application', 'flavor_id')
         
@@ -211,8 +212,7 @@ class Sahara_Plugin:
         
         headers = {'Content-Type': 'application/json'}
         body = dict(plugin=plugin, scaler_plugin=self.scaling_parameters["scaler_plugin"],
-            scaling_parameters=self.scaling_parameters, 
-            cluster_size=self.manager_parameters["cluster_size"],
+            scaling_parameters=self.scaling_parameters, cluster_size=cluster_size,
             percentage=self.manager_parameters["percentage"],
             starting_cap=self.scaling_parameters["starting_cap"], 
             actuator=self.scaling_parameters["actuator"],

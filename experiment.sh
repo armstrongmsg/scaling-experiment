@@ -7,19 +7,27 @@ function run_application()
 	APP_ID="`echo $APP_ID | tr -d '"'`"
 			
 	STATUS=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"status\"]"`
+	instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	
+	while [[ -z $instances_ids ]]
+	do
+		instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		sleep 1
+	done
 	
 	while [[ $STATUS != "OK" && ($STATUS != "Error") ]]
-	do
-		for instance_id in $INSTANCES_IDS
+	do		
+		for instance_id in $instances_ids
 		do
 			CPU_DATA_DIR="$EXPERIMENT_CPU_DATA_DIR/$conf/$APP_ID"
                           
 			mkdir -p $CPU_DATA_DIR
 
-			bash scripts/utils/get_cpu_usage.sh $instance_id 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data"
+			bash scripts/utils/get_cpu_usage.sh $instance_id 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data" &
 		done
 
-		sleep 1
+		wait
+		
 		STATUS=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"status\"]"`
 	done
 
@@ -61,13 +69,13 @@ do
 						
 						run_application "treatments/applications/teragen.cfg"
 						FINAL_APPLICATION_START_TIME=$APPLICATION_START_TIME
-						TOTAL_APPLICATION_TIME=$(( $TOTAL_APPLICATION_TIME + $APPLICATION_TIME ))
+						TOTAL_APPLICATION_TIME=`echo "$TOTAL_APPLICATION_TIME + $APPLICATION_TIME" | bc -l`
 				
 						run_application "treatments/applications/terasort.cfg"
-						TOTAL_APPLICATION_TIME=$(( $TOTAL_APPLICATION_TIME + $APPLICATION_TIME ))
+						TOTAL_APPLICATION_TIME=`echo "$TOTAL_APPLICATION_TIME + $APPLICATION_TIME" | bc -l`
 						
 						run_application "treatments/applications/teravalidate.cfg"
-						TOTAL_APPLICATION_TIME=$(( $TOTAL_APPLICATION_TIME + $APPLICATION_TIME ))
+						TOTAL_APPLICATION_TIME=`echo "$TOTAL_APPLICATION_TIME + $APPLICATION_TIME" | bc -l`
 						
 						echo "$APP_ID|$conf|$cap|$TOTAL_APPLICATION_TIME|$FINAL_APPLICATION_START_TIME" >> app_conf.txt
 					else
