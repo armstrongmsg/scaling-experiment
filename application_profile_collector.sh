@@ -6,11 +6,11 @@ function run_spark_application()
 	# Get instances IDs
 	#
 	
-	instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		
 	while [[ -z $instances_ids ]]
 	do
-		instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		sleep 1
 	done
 	
@@ -102,22 +102,22 @@ do
 		#
 		# Get instance ID
 		#
-		instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
 		while [[ -z $instances_ids ]]
 		do
-			instances_ids=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+			instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 			sleep 1
 		done
 		
 		#
 		# Get instance IP
 		#
-		instance_ip=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
 		while [[ -z $instance_ip ]]
 		do
-			instance_ip=`curl --data "" http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+			instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 			sleep 1
 		done
 	
