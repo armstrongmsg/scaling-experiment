@@ -45,7 +45,10 @@ function get_usage()
 	written_bytes="`remove_and_convert_tail $written_data`"
 	read_bytes="`remove_and_convert_tail $read_data`"
 
-	echo "`date +%s`",$cap,$cpu_usage,$read_bytes,$written_bytes,$host_cpu_usage
+	if [ -n $read_bytes -a -n $written_bytes -a -n $cpu_usage  ]
+	then
+		echo "`date +%s`",$cap,$cpu_usage,$read_bytes,$written_bytes,$host_cpu_usage
+	fi
 }
 
 if [ -f "host-$instance_id" ]
