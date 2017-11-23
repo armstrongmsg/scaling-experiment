@@ -206,7 +206,8 @@ class Sahara_Plugin:
         self.scaling_parameters['metric_source'] = metric_source
         
         total_tasks = 0
-        #spark_master_ip = ""
+        
+        number_of_jobs = self.application_config.get('application', 'number_of_jobs')
         
         if metric_source == 'spark':
             total_tasks = self.application_config.get('application', 'total_tasks')
@@ -229,7 +230,8 @@ class Sahara_Plugin:
             openstack_plugin=openstack_plugin, job_type=job_type, version=version, 
             slave_ng=slave_ng, master_ng=master_ng, net_id=net_id, 
             opportunistic_slave_ng=opportunistic_slave_ng,
-            total_tasks=total_tasks, spark_master_ip=self.manager_parameters["spark_master_ip"],
+            total_tasks=total_tasks, number_of_jobs=number_of_jobs, 
+            spark_master_ip=self.manager_parameters["spark_master_ip"],
             )
         
         url = "http://%s:%s/manager/execute" % (self.manager_ip, self.manager_port)
