@@ -26,7 +26,7 @@ resources_profile$written_bytes <- resources_profile$written_bytes/(1024*1024)
 
 # Application times
 execution.times <- progress_profile %>% group_by(application, application_id) %>% summarize(execution_time=last(time))
-application.times <- execution.times %>% group_by(application) %>% summarize(mean_execution_time=mean(execution_time))
+application.times <- execution.times %>% group_by(application) %>% summarize(mean_execution_time=mean(execution_time), sd_execution_time=sd(execution_time))
 write.csv(application.times, "application_times.csv")
 
 # Progress - All applications
@@ -95,9 +95,9 @@ ggplot(filter(emaas.profile, variable != "host_cpu_usage"), aes(timestamp, value
 ggsave("emaas_profile.png", width = 8, height = 6)
 
 # CPU bound scripted
-cpubound.progress <- filter(progress_profile, application == "cpu_bound_scripted")
-cpubound.resources <- filter(resources_profile, application == "cpu_bound_scripted") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
-cpubound.profile <- rbind(cpubound.resources, data.frame(timestamp=cpubound.progress$time, cap=50, application="cpu_bound_scripted", application_id=cpubound.progress$application_id, variable="progress", value=cpubound.progress$progress))
+cpubound.progress <- filter(progress_profile, application == "cpu_bound_scripted_profile")
+cpubound.resources <- filter(resources_profile, application == "cpu_bound_scripted_profile") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
+cpubound.profile <- rbind(cpubound.resources, data.frame(timestamp=cpubound.progress$time, cap=50, application="cpu_bound_scripted_profile", application_id=cpubound.progress$application_id, variable="progress", value=cpubound.progress$progress))
 ggplot(filter(cpubound.profile, variable != "host_cpu_usage"), aes(timestamp, value, group = application_id)) +
   geom_line() +
   ylab("") +
