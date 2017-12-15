@@ -2,8 +2,8 @@
 scaler_plugin = progress-error
 check_interval = 10
 trigger_down = 10
-trigger_up = 10
-min_cap = 10
+trigger_up = 0
+min_cap = 30
 max_cap = 100
 actuation_size = 100
 metric_rounding = 2

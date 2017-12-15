@@ -1,12 +1,12 @@
 [scaler]
 scaler_plugin = proportional
 check_interval = 10
-trigger_down = 10
-trigger_up = 10
-min_cap = 10
+trigger_down = 30
+trigger_up = 0
+min_cap = 30
 max_cap = 100
 metric_rounding = 2
 
 heuristic_name = error_proportional_up_down
 factor_up = 2
-factor_down = 0.5
+factor_down = 0.1
