@@ -6,12 +6,12 @@ function run_application()
 	APP_ID="`python scripts/client/client.py conf $MANAGER_IP $MANAGER_PORT $cap $actuator`"
 	APP_ID="`echo $APP_ID | tr -d '"'`"
 			
-	STATUS=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"status\"]"`
-	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	STATUS=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"status\"]"`
+	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
 	while [[ -z $instances_ids ]]
 	do
-		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		sleep 1
 	done
 	
@@ -28,11 +28,11 @@ function run_application()
 
 		wait
 		
-		STATUS=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"status\"]"`
+		STATUS=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"status\"]"`
 	done
 
-	APPLICATION_TIME=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"time\"]"`
-	APPLICATION_START_TIME=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"start_time\"]"`
+	APPLICATION_TIME=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"time\"]"`
+	APPLICATION_START_TIME=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"start_time\"]"`
 }
 
 REPS=$1

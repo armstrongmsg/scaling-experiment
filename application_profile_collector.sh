@@ -7,11 +7,11 @@ function run_spark_application()
 	#
 	echo "Waiting for application ID"
 	
-	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$1\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		
 	while [[ -z $instances_ids ]]
 	do
-		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$1[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$1\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		sleep 1
 	done
 	
@@ -21,7 +21,7 @@ function run_spark_application()
 	echo "Waiting for application"	
 
 	while [ -z `curl -s $MASTER_IP:4040/api/v1/applications | grep \"id\" | awk -F'[:,]' '{print $2}'` ]
-	do 
+	do
 		sleep 1
 	done
 	
@@ -73,24 +73,24 @@ function run_os_generic_application()
 	#
 	# Get instance ID
 	#
-	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
 	echo "Waiting for instance ID"
 	while [[ -z $instances_ids ]]
 	do
-		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		sleep 1
 	done
 	
 	#
 	# Get instance IP
 	#
-	instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+	instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
 	echo "Waiting for instance IP"
 	while [[ -z $instance_ip ]]
 	do
-		instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".$APP_ID[\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
+		instance_ip=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"ips\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 		sleep 1
 	done
 
@@ -175,7 +175,7 @@ do
 		#
 		# OS Generic Application
 		#
-		elif [ $app = "cpu_bound_scripted" -o $app = "io" -o $app = "wordcount" ]
+		elif [ $app = "cpu_bound_scripted" -o $app = "io" -o $app = "wordcount" -o $app = "cpu_bound_scripted_profile" -o $app = "wordcount_profile" ]
 		then
 			cp "treatments/applications/$app.cfg" "conf/application.cfg"
 		
@@ -183,7 +183,7 @@ do
 			APP_ID="`echo $APP_ID | tr -d '"'`"
 			
 			run_os_generic_application $APP_ID $app			
-			mv progress.csv "$EXPERIMENT_CPU_DATA_DIR/profile-$app/$APP_ID" 
+			mv progress.csv "$EXPERIMENT_CPU_DATA_DIR/profile-$app/$APP_ID"
 		#
 		# Spark Application
 		#

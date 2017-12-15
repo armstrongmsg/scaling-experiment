@@ -64,6 +64,35 @@ class Scaling_Plugin:
         
         return scaling_parameters
 
+    def get_pid_parameters(self, scaling_config):
+        scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
+        check_interval = scaling_config.getint('scaler', 'check_interval')
+        trigger_down = scaling_config.getint('scaler', 'trigger_down')
+        trigger_up = scaling_config.getint('scaler', 'trigger_up')
+        min_cap = scaling_config.getint('scaler', 'min_cap')
+        max_cap = scaling_config.getint('scaler', 'max_cap')
+        metric_rounding = scaling_config.getint('scaler', 'metric_rounding')
+        heuristic_name = scaling_config.get('scaler', 'heuristic_name')
+                
+        heuristic_options = {}
+        heuristic_options['heuristic_name'] = heuristic_name
+        
+        if heuristic_name == 'error_pid':
+            proportional_factor = scaling_config.getfloat('scaler', 'proportional_factor')
+            derivative_factor = scaling_config.getfloat('scaler', 'derivative_factor')
+            integrative_factor = scaling_config.getfloat('scaler', 'integrative_factor')
+            heuristic_options['proportional_factor'] = proportional_factor
+            heuristic_options['derivative_factor'] = derivative_factor
+            heuristic_options['integrative_factor'] = integrative_factor
+ 
+        scaling_parameters = {'check_interval':check_interval,
+                            'trigger_down':trigger_down, 'trigger_up':trigger_up,
+                            'min_cap':min_cap, 'max_cap':max_cap, 'metric_rounding':metric_rounding,
+                            'heuristic_options': heuristic_options, 
+                            'scaler_plugin':scaler_plugin}
+        
+        return scaling_parameters
+
     def get_progress_error_parameters(self, scaling_config):
         scaler_plugin = scaling_config.get('scaler', 'scaler_plugin')
         check_interval = scaling_config.getint('scaler', 'check_interval')
@@ -94,6 +123,8 @@ class Scaling_Plugin:
             scaling_parameters = self.get_proportional_plugin_parameters(scaling_config)
         elif scaler_plugin == 'proportional_derivative':
             scaling_parameters = self.get_proportional_derivative_parameters(scaling_config)
+        elif scaler_plugin == 'pid':
+            scaling_parameters = self.get_pid_parameters(scaling_config)
                     
         return scaling_parameters       
 
@@ -169,6 +200,7 @@ class Sahara_Plugin:
         self.starting_cap = starting_cap
     
     def run(self): 
+        app_name = self.application_config.get('application','app_name')
         plugin = self.application_config.get('application', 'plugin')
         opportunistic = self.application_config.get('application', 'opportunistic')
         main_class = self.application_config.get('application', 'main_class')
@@ -211,10 +243,9 @@ class Sahara_Plugin:
         
         if metric_source == 'spark':
             total_tasks = self.application_config.get('application', 'total_tasks')
-            #spark_master_ip = self.application_config.get('application', 'spark_master_ip')
         
         headers = {'Content-Type': 'application/json'}
-        body = dict(plugin=plugin, scaler_plugin=self.scaling_parameters["scaler_plugin"],
+        body = dict(app_name=app_name, plugin=plugin, scaler_plugin=self.scaling_parameters["scaler_plugin"],
             scaling_parameters=self.scaling_parameters, cluster_size=cluster_size,
             percentage=self.manager_parameters["percentage"],
             starting_cap=self.scaling_parameters["starting_cap"], 
