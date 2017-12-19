@@ -23,7 +23,7 @@ function run_application()
                           
 			mkdir -p $CPU_DATA_DIR
 
-			bash scripts/utils/get_cpu_usage.sh $instance_id 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data" &
+			bash scripts/utils/get_cpu_usage.sh $instance_id $TUNNEL 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data" &
 		done
 
 		wait

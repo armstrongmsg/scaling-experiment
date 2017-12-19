@@ -4,21 +4,24 @@
 # bc
 
 instance_id=$1
+tunnel=$2
 compute_nodes="c4-compute11 c4-compute12 c4-compute22"
+compute_nodes_ports="10011 10012 10022"
+keypath="~/.ssh/bigsea"
 
 function remove_and_convert_tail()
 {
-	if [[ $1 == *"K"* ]]
-	then 
-		result=$(( `echo $1 | tr -d 'K'` * 1024 ))
-	elif [[ $1 == *"M"* ]]
-	then
-		result=$(( `echo $1 | tr -d 'M'` * 1048576 ))
-	else
-		result=$1
-	fi
+        if [[ $1 == *"K"* ]]
+        then
+                result=$(( `echo $1 | tr -d 'K'` * 1024 ))
+        elif [[ $1 == *"M"* ]]
+        then
+                result=$(( `echo $1 | tr -d 'M'` * 1048576 ))
+        else
+                result=$1
+        fi
 
-	echo $result
+        echo $result
 }
 
 function get_usage()
@@ -53,19 +56,47 @@ function get_usage()
 
 if [ -f "host-$instance_id" ]
 then
-	compute_node="`cat host-$instance_id`"
+        compute_node="`cat host-$instance_id`"
 else
-	for compute_node_candidate in $compute_nodes
-	do
-		in_host="`ssh root@$compute_node_candidate virsh dominfo $instance_id > /dev/null; echo $?`"
+if [ $tunnel == "0" ]
+        then
+                for compute_node_candidate in $compute_nodes
+                do
+                        in_host="`ssh root@$compute_node_candidate virsh dominfo $instance_id > /dev/null; echo $?`"
 
-		if [ $in_host = "0" ]
-		then
-			compute_node=$compute_node_candidate
-			echo $compute_node > "host-$instance_id"
-			break
-		fi
-	done
+                        if [ $in_host = "0" ]
+                        then
+                                compute_node=$compute_node_candidate
+                                echo $compute_node > "host-$instance_id"
+                                break
+                        fi
+                done
+        elif [ $tunnel == "1" ]
+        then
+                for compute_node_candidate in $compute_nodes_ports
+                do
+                        in_host="`ssh -i $keypath root@localhost -p $compute_node_candidate virsh dominfo $instance_id > /dev/null; echo $?`"
+
+                        if [ $in_host = "0" ]
+                        then
+                                compute_node=$compute_node_candidate
+                                echo $compute_node > "host-$instance_id"
+                                break
+                        fi
+                done
+        else
+                echo "Invalid tunnel"
+                exit
+        fi
 fi
 
-ssh root@$compute_node "$(typeset -f); get_usage $instance_id"
+if [ $tunnel == "0" ]
+then
+        ssh root@$compute_node "$(typeset -f); get_usage $instance_id"
+elif [ $tunnel == "1" ]
+then
+        ssh -i $keypath root@localhost -p $compute_node "$(typeset -f); get_usage $instance_id"
+else
+        echo "Invalid tunnel"
+        exit
+fi
