@@ -4,7 +4,7 @@ library(reshape2)
 
 theme_white <- function() {
   theme_update(
-    plot.title = element_text(size=22),
+    plot.title = element_text(size=14, hjust = 0.5),
     axis.text.y =element_text(size=10),
     axis.title = element_text(size=17),
     legend.title = element_text(size = 16),
@@ -62,6 +62,12 @@ kmeans.progress <- filter(progress_profile, application == "kmeans")
 kmeans.resources <- filter(resources_profile, application == "kmeans") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
 kmeans.profile <- rbind(kmeans.resources, data.frame(timestamp=kmeans.progress$time, cap=50, application="kmeans", application_id=kmeans.progress$application_id, variable="progress", value=kmeans.progress$progress))
 
+ggplot(kmeans.progress, aes(time, progress, group = application_id)) +
+  geom_line() +
+  ylab("Progresso") +
+  xlab("Tempo") +
+  ggtitle("Progresso do KMeans")
+
 ggplot() +
   geom_line(data=filter(kmeans.profile, variable %in% c("cpu_usage", "read_bytes", "written_bytes")), 
             aes(x = timestamp, y = value)) +
@@ -83,10 +89,77 @@ ggplot(filter(wordcount.profile, variable != "host_cpu_usage"), aes(timestamp, v
 
 ggsave("wordcount_profile.png", width = 8, height = 6)
 
+#
 # Emaas
+#
+
 emaas.progress <- filter(progress_profile, application == "emaas")
 emaas.resources <- filter(resources_profile, application == "emaas") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
 emaas.profile <- rbind(emaas.resources, data.frame(timestamp=emaas.progress$time, cap=50, application="emaas", application_id=emaas.progress$application_id, variable="progress", value=emaas.progress$progress))
+
+# Only progress
+
+ggplot(emaas.progress, aes(time, progress, group = application_id)) + 
+  geom_line() +
+  ylab("Progresso") +
+  xlab("Tempo") +
+  ggtitle("Progresso do EMaaS")
+
+ggsave("emaas_progress.png")
+
+# Only CPU
+
+# Use only the first three applications
+emaas.resources.sample <- filter(emaas.resources, variable == "cpu_usage" & 
+                        application_id %in% unique(emaas.resources$application_id)[c(1,2,3)])
+ggplot(emaas.resources.sample, aes(timestamp, 2*value, group = application_id)) + 
+  geom_line() + 
+  facet_grid(application_id ~ .) +
+  xlab("Tempo") +
+  ylab("Uso de CPU") +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  )
+
+ggsave("emaas_cpu.png")
+
+# Only read
+
+# Use only the first three applications
+emaas.resources.sample <- filter(emaas.resources, variable == "read_bytes" & 
+                                   application_id %in% unique(emaas.resources$application_id)[c(1,2,3)])
+ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
+  geom_line() + 
+  facet_grid(application_id ~ .) +
+  xlab("Tempo") +
+  ylab("Leituras (em MB)") +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  )
+
+ggsave("emaas_read.png")
+
+# Only written
+
+# Use only the first three applications
+emaas.resources.sample <- filter(emaas.resources, variable == "written_bytes" & 
+                                   application_id %in% unique(emaas.resources$application_id)[c(1,2,3)])
+ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
+  geom_line() + 
+  facet_grid(application_id ~ .) +
+  xlab("Tempo") +
+  ylab("Escritas (em MB)") +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_blank()
+  )
+
+ggsave("emaas_written.png")
+
+# All
+
 ggplot(filter(emaas.profile, variable != "host_cpu_usage"), aes(timestamp, value, group = application_id))+
   geom_line() +
   ylab("") + 
@@ -94,7 +167,11 @@ ggplot(filter(emaas.profile, variable != "host_cpu_usage"), aes(timestamp, value
 
 ggsave("emaas_profile.png", width = 8, height = 6)
 
+
+#
 # CPU bound scripted
+#
+
 cpubound.progress <- filter(progress_profile, application == "cpu_bound_scripted_profile")
 cpubound.resources <- filter(resources_profile, application == "cpu_bound_scripted_profile") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
 cpubound.profile <- rbind(cpubound.resources, data.frame(timestamp=cpubound.progress$time, cap=50, application="cpu_bound_scripted_profile", application_id=cpubound.progress$application_id, variable="progress", value=cpubound.progress$progress))
