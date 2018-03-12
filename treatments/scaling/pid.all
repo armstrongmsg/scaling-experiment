@@ -1,0 +1,13 @@
+[scaler]
+scaler_plugin = pid
+check_interval = 10
+trigger_down = 0
+trigger_up = 0
+min_cap = 30
+max_cap = 100
+metric_rounding = 2
+
+heuristic_name = error_pid
+proportional_factor = 1
+derivative_factor = 1
+integrative_factor = 1
