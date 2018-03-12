@@ -5,7 +5,7 @@ function run_application()
 	cp $1 "conf/application.cfg"
 	APP_ID="`python scripts/client/client.py conf $MANAGER_IP $MANAGER_PORT $cap $actuator`"
 	APP_ID="`echo $APP_ID | tr -d '"'`"
-			
+	
 	STATUS=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"status\"]"`
 	instances_ids=`curl http://$MANAGER_IP:$MANAGER_PORT/manager/status 2> /dev/null | jq -r ".[\"$APP_ID\"][\"instances\"]" | head -n -1 | tail -n+2 | tr -d [\",]`
 	
@@ -16,11 +16,11 @@ function run_application()
 	done
 	
 	while [[ $STATUS != "OK" && ($STATUS != "Error") ]]
-	do		
+	do
 		for instance_id in $instances_ids
 		do
 			CPU_DATA_DIR="$EXPERIMENT_CPU_DATA_DIR/$conf/$APP_ID"
-                          
+
 			mkdir -p $CPU_DATA_DIR
 
 			bash scripts/utils/get_cpu_usage.sh $instance_id $TUNNEL 2> error_output.txt >> "$CPU_DATA_DIR/$instance_id"".cpu_data" &
