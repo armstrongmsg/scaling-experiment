@@ -63,10 +63,10 @@ if __name__ == '__main__':
         for n in xrange(n_files):
             filename = "%s/%d.%d.%d.data" % (base_path, i, file_sizes[i], n)
             output_file = open(filename, "w")
-    
+
             for k in xrange(file_size/block_size):
                 output_file.write(base_data)
-    
+   
             completed_tasks += 1
             log_progress(logger, total_number_of_tasks, completed_tasks)
     
@@ -79,9 +79,9 @@ if __name__ == '__main__':
         for n in xrange(n_files):
             filename = "%s/%d.%d.%d.data" % (base_path, i, file_sizes[i], n)
             output_file = open(filename, "r")
-    
-            for k in xrange(file_size/block_size):
-                output_file.read(block_size)
+
+            while output_file.read(block_size) != "":
+                pass
     
             completed_tasks += 1
             log_progress(logger, total_number_of_tasks, completed_tasks)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
     for i in xrange(len(file_sizes)):
         file_size = file_sizes[i]
         n_files = number_of_files[i]
-    
+     
         for n in xrange(n_files):
             filename = "%s/%d.%d.%d.data" % (base_path, i, file_sizes[i], n)
             os.remove(filename)
