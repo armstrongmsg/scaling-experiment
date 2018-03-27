@@ -26,9 +26,10 @@ resources_labels <- c(cpu_usage = "CPU (%)", read_bytes = "Leitura (MB)",
 application_labels <- c(cpu_bound_scripted_profile = "Aplicação limitada por CPU", 
                         cpu_bound_scripted = "Aplicação limitada por CPU",
                         emaas = "EMaaS", kmeans = "K-Means", wordcount_profile = "Wordcount", 
-                        wordcount = "Wordcount")
+                        wordcount = "Wordcount", pure_io = "Aplicação limitada por IO",
+                        pure_io_profile = "Aplicação limitada por IO")
 
-PLOT_DIRECTORY <- "plots"
+PLOT_DIRECTORY <- "new_plots"
 
 theme_set(theme_bw())
 theme_white()
@@ -398,3 +399,114 @@ ggplot(filter(cpubound_dist.profile, variable == "progress"), aes(timestamp, 100
   xlab("Tempo (s)")
 
 save_plot("progress_cpubound_com_perturbacao.png")
+
+
+#
+# IO bound scripted (sem perturbações)
+#
+
+pure_io.progress <- filter(progress_profile, application == "pure_io_profile")
+pure_io.resources <- filter(resources_profile, application == "pure_io_profile") %>% 
+  melt(id=c("timestamp", "cap", "application", "application_id"))
+
+pure_io.profile <- rbind(pure_io.resources, 
+                          data.frame(timestamp=pure_io.progress$time, cap=50, 
+                                     application="pure_io_profile", 
+                                     application_id=pure_io.progress$application_id, 
+                                     variable="progress", value=pure_io.progress$progress))
+
+ggplot(filter(pure_io.profile, variable != "host_cpu_usage" & application_id != "osgeneric7"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("") +
+  xlab("Tempo (s)") + 
+  facet_grid(variable ~ application, scales = "free", 
+             labeller = labeller(variable = resources_labels, 
+                                 application = application_labels))
+
+save_plot("pure_io_sem_perturbacao.png")
+
+ggplot(filter(pure_io.profile, variable == "cpu_usage" & application_id != "osgeneric7"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Uso de CPU (%)") +
+  xlab("Tempo (s)")
+
+save_plot("cpu_pure_io_sem_perturbacao.png")
+
+ggplot(filter(pure_io.profile, variable == "read_bytes" & application_id != "osgeneric7"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Dados lidos (em MB)") +
+  xlab("Tempo (s)")
+
+save_plot("read_bytes_pure_io_sem_perturbacao.png")
+
+ggplot(filter(pure_io.profile, variable == "written_bytes" & application_id != "osgeneric7"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Dados escritos (em MB)") +
+  xlab("Tempo (s)")
+
+save_plot("written_bytes_pure_io_sem_perturbacao.png")
+
+ggplot(filter(pure_io.profile, variable == "progress" & application_id != "osgeneric7"), aes(timestamp, 100*value, group = application_id)) +
+  geom_line() +
+  ylab("Progresso (em %)") +
+  xlab("Tempo (s)")
+
+save_plot("progress_pure_io_sem_perturbacao.png")
+
+
+#
+# IO bound scripted (com perturbações)
+#
+
+pure_io_dist.progress <- filter(progress_profile, application == "pure_io")
+pure_io_dist.resources <- filter(resources_profile, application == "pure_io") %>% 
+  melt(id=c("timestamp", "cap", "application", "application_id"))
+
+pure_io_dist.profile <- rbind(pure_io_dist.resources, 
+                               data.frame(timestamp=pure_io_dist.progress$time, cap=50, 
+                                          application="pure_io", 
+                                          application_id=pure_io_dist.progress$application_id, 
+                                          variable="progress", value=pure_io_dist.progress$progress))
+
+ggplot(filter(pure_io_dist.profile, variable != "host_cpu_usage"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("") +
+  xlab("Tempo (s)") + 
+  facet_grid(variable ~ application, scales = "free", 
+             labeller = labeller(variable = resources_labels, 
+                                 application = application_labels))
+
+save_plot("pure_io_com_perturbacao.png")
+
+ggplot(filter(pure_io_dist.profile, variable == "cpu_usage"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Uso de CPU (%)") +
+  xlab("Tempo (s)")
+
+save_plot("cpu_pure_io_com_perturbacao.png")
+
+ggplot(filter(pure_io_dist.profile, variable == "read_bytes"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Dados lidos (em MB)") +
+  xlab("Tempo (s)")
+
+save_plot("read_bytes_pure_io_com_perturbacao.png")
+
+ggplot(filter(pure_io_dist.profile, variable == "written_bytes"), aes(timestamp, value, group = application_id)) +
+  geom_line() +
+  ylab("Dados escritos (em MB)") +
+  xlab("Tempo (s)")
+
+save_plot("written_bytes_pure_io_com_perturbacao.png")
+
+ggplot(filter(pure_io_dist.profile, variable == "progress"), aes(timestamp, 100*value, group = application_id)) +
+  geom_line() +
+  ylab("Progresso (em %)") +
+  xlab("Tempo (s)")
+
+save_plot("progress_pure_io_com_perturbacao.png")
+
+
+
+
+
