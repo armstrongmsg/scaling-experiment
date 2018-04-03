@@ -10,6 +10,8 @@
 *.swp
 *.png
 *.pyc
+*.bak
+*.data
 conf/application.cfg
 conf/client_bigsea.cfg
 conf/experiment.cfg

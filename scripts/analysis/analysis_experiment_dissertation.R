@@ -14,53 +14,191 @@ theme_white <- function() {
   )
 }
 
+save_plot <- function(filename) {
+  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 12, height = 6)
+}
+
 theme_set(theme_bw())
 theme_white()
+
+resources_labels <- c(cpu_usage = "CPU (%)", read_bytes = "Leitura (MB)",
+                      written_bytes = "Escrita (MB)", host_cpu_usage = "host_cpu_usage", 
+                      progress = "Progresso")
+
+application_labels <- c(cpu_bound_scripted_profile = "Aplicação limitada por CPU", 
+                        cpu_bound_scripted = "Aplicação limitada por CPU",
+                        emaas = "EMaaS", kmeans = "K-Means", wordcount_profile = "Wordcount", 
+                        wordcount = "Wordcount", pure_io = "Aplicação limitada por IO",
+                        pure_io_profile = "Aplicação limitada por IO",
+                        `pure-io-dist-adjusted` = "Aplicação limitada por IO ajustada")
+
+scaling_labels <- c(pid.all = "PID", pid.pd_only = "Proporcional-\nDerivativo", 
+                    pid.p_only = "Proporcional", `progress-error.regular` = "Min-Max",
+                    pid.super_d = "Proporcional-\nDerivativo ajustado")
+
+PLOT_DIRECTORY <- "plots_io"
+deadlines <- c(cpu_bound_scripted = 2060, pure_io = 2733)
 
 aggregated_data <- read.csv("aggregated.csv")
 resources_data <- read.csv("resources.csv")
 
-aggregated_data$application_conf <- factor(aggregated_data$application_conf, labels = c("min-max", "proporcional-derivativo", "proporcional"))
-resources_data$application_conf <- factor(resources_data$application_conf, labels = c("min-max", "proporcional-derivativo", "proporcional"))
-
-aggregated_data$actuator <- factor(aggregated_data$actuator, labels = c("CPU + I/O", "CPU"))
-resources_data$actuator <- factor(resources_data$actuator, labels = c("CPU + I/O", "CPU"))
-
 #
-# Resources usage - Time Series
+#
+### CPU bound 
+#
 #
 
-# TODO complete this filtering
-spark_applications <- filter(aggregated_data, application == "kmeans" | application == "emaas")
-os_generic_application <- filter(aggregated_data, application == "cpu_bound_scripted" | application == "wordcount")
+cpu_bound <- filter(aggregated_data, application == "cpu_bound_scripted")
 
-ggplot(spark_applications, aes(timestamp, written_bytes, group = application_id)) + 
+#
+# Written bytes
+#
+
+ggplot(cpu_bound, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  facet_grid(application ~ instance_id)
+  xlab("Tempo") +
+  ylab("Dados escritos (em MB)") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("cpu_bound_written.png")
 
-ggplot(os_generic_application, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
+#
+# Read bytes
+#
+
+ggplot(cpu_bound, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  facet_grid(application ~ ., scales = "free")
+  xlab("Tempo") +
+  ylab("Dados lidos (em MB)") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("cpu_bound_read.png")
 
-ggplot(os_generic_application, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+#
+# CPU
+#
+
+ggplot(cpu_bound, aes(timestamp, cpu_usage, group = application_id)) + 
   geom_line() + 
-  facet_grid(application ~ ., scales = "free")
+  xlab("Tempo") +
+  ylab("Uso de CPU") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("cpu_bound_cpu.png")
 
+#
+# Cap
+#
 
-ggplot(filter(aggregated_data, application_id == "osspark17"), aes(timestamp, read_bytes/(1024*1024))) + 
-  geom_line() + 
+ggplot(cpu_bound, aes(timestamp, cap, group = application_id)) + 
+  geom_line() +
+  xlab("Tempo") +
+  ylab("Cap") +
+  facet_grid(application ~ application_conf, scales = "free",
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("cpu_bound_cap.png")
+
+#
+# Time
+#
+
+cpu_bound.deadline <- deadlines["cpu_bound_scripted"][[1]]
+ggplot(cpu_bound, aes(application_conf, application_time),  
+                labeller = labeller(x = scaling_labels)) + 
+  geom_boxplot() + 
   geom_point() +
-  facet_grid(. ~ instance_id)
+  xlab("Controlador") +
+  ylab("Tempo de execução") +
+  geom_hline(aes(yintercept=cpu_bound.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, cpu_bound.deadline, label = paste("Prazo =", cpu_bound.deadline), vjust = -1)) +
+  scale_x_discrete(labels=scaling_labels)
+save_plot("cpu_bound_time.png")
 
-ggplot(filter(aggregated_data, application_id == "osspark17"), aes(timestamp, written_bytes/(1024*1024))) + 
-  geom_line() + 
-  geom_point() +
-  facet_grid(. ~ instance_id)
 
-ggplot(filter(aggregated_data, application_id == "osspark17"), aes(timestamp, cpu_usage)) + 
+#
+#
+### IO bound 
+#
+#
+
+io_bound <- filter(aggregated_data, application == "pure_io")
+
+#
+# Written bytes
+#
+
+io_bound$written_bytes <- as.numeric(io_bound$written_bytes)
+ggplot(io_bound, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
+  xlab("Tempo") +
+  ylab("Dados escritos (em MB)") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("io_bound_written.png")
+
+#
+# Read bytes
+#
+
+ggplot(io_bound, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+  geom_line() + 
+  xlab("Tempo") +
+  ylab("Dados lidos (em MB)") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("io_bound_read.png")
+
+#
+# CPU
+#
+
+ggplot(io_bound, aes(timestamp, cpu_usage, group = application_id)) + 
+  geom_line() + 
+  xlab("Tempo") +
+  ylab("Uso de CPU") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("io_bound_cpu.png")
+
+#
+# Cap
+#
+
+ggplot(io_bound, aes(timestamp, cap, group = application_id)) + 
+  geom_line() +
+  xlab("Tempo") +
+  ylab("Cap") +
+  facet_grid(application ~ application_conf, scales = "free",
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("io_bound_cap.png")
+
+#
+# Time
+#
+
+io_bound.deadline <- deadlines["pure_io"][[1]]
+ggplot(io_bound, aes(application_conf, application_time),  
+       labeller = labeller(x = scaling_labels)) + 
+  geom_boxplot() + 
   geom_point() +
-  facet_grid(instance_id ~ application)
+  xlab("Controlador") +
+  ylab("Tempo de execução") +
+  geom_hline(aes(yintercept=io_bound.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, io_bound.deadline, label = paste("Prazo =", io_bound.deadline), vjust = -1)) +
+  scale_x_discrete(labels=scaling_labels) +
+  facet_wrap(~application)
+save_plot("io_bound_time.png")
+
+
+
 
 
 # For EMaaS
@@ -77,7 +215,7 @@ ggplot(emaas.data, aes(timestamp, read_bytes/(1024*1024))) +
   geom_line(size = 0.2) +
   xlab("Tempo") +
   ylab("Leitura (em MB)") +
-  facet_grid(instance_id ~ actuator) 
+  facet_grid(instance_id ~ actuator)
 
 ggplot(emaas.data, aes(timestamp, written_bytes/(1024*1024))) + 
   geom_line(size = 0.2) + 
@@ -112,12 +250,16 @@ ggplot(emaas.data, aes(timestamp, cpu_usage)) +
 
 # General - Time
 # TODO rename application_conf to scaling_conf
-ggplot(aggregated_data, aes(application_conf, application_time)) + 
+aggregated_data$application_time <- aggregated_data$application_time - 60
+ggplot(aggregated_data, aes(application_conf, application_time),  labeller = labeller(x = scaling_labels)) + 
   geom_boxplot() + 
   geom_point() +
   xlab("Controlador") +
+  scale_x_discrete(labels=scaling_labels) +
   ylab("Tempo de execução") +
-  facet_grid(application ~ actuator, scales = "free")
+  facet_grid(. ~ application, scales = "free", 
+             labeller = labeller(variable = resources_labels, 
+                                 application = application_labels))
 
 ggsave("application_time.png")
 
