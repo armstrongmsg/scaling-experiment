@@ -175,7 +175,7 @@ do
 		#
 		# OS Generic Application
 		#
-		elif [ $app = "cpu_bound_scripted" -o $app = "io" -o $app = "wordcount" -o $app = "cpu_bound_scripted_profile" -o $app = "wordcount_profile" -o $app = "cpu_bound_scripted_40min" ]
+		elif [ $app = "cpu_bound_scripted" -o $app = "io" -o $app = "wordcount" -o $app = "cpu_bound_scripted_profile" -o $app = "wordcount_profile" -o $app = "cpu_bound_scripted_40min"  -o $app = "pure-io-experiments" -o $app = "pure-io-dist" -o $app = "cpu_bound_scripted_experiment" -o $app = "monitoring_impact" ]
 		then
 			cp "treatments/applications/$app.cfg" "conf/application.cfg"
 		
@@ -198,7 +198,7 @@ do
 		fi
 	done
 	
-	sleep 10
+	sleep 60
 done
 
 rm host-*

@@ -74,6 +74,8 @@ do
 						run_application "treatments/applications/$app.cfg"
 						echo "$APP_ID,$conf,$app,$cap,$APPLICATION_TIME,$APPLICATION_START_TIME,$actuator" >> app_conf.txt
 					fi
+					
+					sleep 60
 				done
 			done
 		done
