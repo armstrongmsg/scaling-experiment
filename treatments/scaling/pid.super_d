@@ -8,6 +8,6 @@ max_cap = 100
 metric_rounding = 2
 
 heuristic_name = error_pid
-proportional_factor = 1
-derivative_factor = 1
+proportional_factor = 0.1
+derivative_factor = 20
 integrative_factor = 0

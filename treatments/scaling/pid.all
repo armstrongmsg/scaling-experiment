@@ -3,7 +3,7 @@ scaler_plugin = pid
 check_interval = 10
 trigger_down = 0
 trigger_up = 0
-min_cap = 30
+min_cap = 50
 max_cap = 100
 metric_rounding = 2
 

@@ -7,7 +7,7 @@ instance_id=$1
 tunnel=$2
 compute_nodes="c4-compute11 c4-compute12 c4-compute22"
 compute_nodes_ports="10011 10012 10022"
-keypath="~/.ssh/bigsea"
+keypath="/home/ubuntu/.ssh/bigsea"
 
 function remove_and_convert_tail()
 {
@@ -54,11 +54,12 @@ function get_usage()
 	fi
 }
 
+
 if [ -f "host-$instance_id" ]
 then
         compute_node="`cat host-$instance_id`"
 else
-if [ $tunnel == "0" ]
+	if [ $tunnel == "0" ]
         then
                 for compute_node_candidate in $compute_nodes
                 do
