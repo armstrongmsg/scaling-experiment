@@ -29,7 +29,7 @@ application_labels <- c(cpu_bound_scripted_profile = "Aplicação limitada por C
                         wordcount = "Wordcount", pure_io = "Aplicação limitada por IO",
                         pure_io_profile = "Aplicação limitada por IO")
 
-PLOT_DIRECTORY <- "new_plots"
+PLOT_DIRECTORY <- "emaas"
 
 theme_set(theme_bw())
 theme_white()
@@ -191,36 +191,25 @@ save_plot("progress_wordcount_sem_perturbacao.png")
 
 emaas.progress <- filter(progress_profile, application == "emaas")
 emaas.resources <- filter(resources_profile, application == "emaas") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
-emaas.profile <- rbind(emaas.resources, data.frame(timestamp=emaas.progress$time, cap=50, application="emaas", application_id=emaas.progress$application_id, variable="progress", value=emaas.progress$progress))
-
-# Only progress
+emaas.profile <- rbind(emaas.resources, data.frame(timestamp=emaas.progress$time, cap=70, application="emaas", application_id=emaas.progress$application_id, variable="progress", value=emaas.progress$progress))
 
 ggplot(emaas.progress, aes(time, progress, group = application_id)) + 
   geom_line() +
-  ylab("Progresso") +
-  xlab("Tempo") +
-  ggtitle("Progresso do EMaaS")
+  ylab("Progresso (em %)") +
+  xlab("Tempo (s)")
 
-ggsave("emaas_progress.png")
-
-# Only CPU
+save_plot("emaas_progress.png")
 
 # Use only the first three applications
 emaas.resources.sample <- filter(emaas.resources, variable == "cpu_usage" & 
                         application_id %in% unique(emaas.resources$application_id)[c(1,2,3)])
-ggplot(emaas.resources.sample, aes(timestamp, 2*value, group = application_id)) + 
+ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
   geom_line() + 
   facet_grid(application_id ~ .) +
   xlab("Tempo") +
-  ylab("Uso de CPU") +
-  theme(
-    strip.background = element_blank(),
-    strip.text.y = element_blank()
-  )
+  ylab("Uso de CPU")
 
-ggsave("emaas_cpu.png")
-
-# Only read
+save_plot("emaas_cpu.png")
 
 # Use only the first three applications
 emaas.resources.sample <- filter(emaas.resources, variable == "read_bytes" & 
@@ -228,16 +217,10 @@ emaas.resources.sample <- filter(emaas.resources, variable == "read_bytes" &
 ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
   geom_line() + 
   facet_grid(application_id ~ .) +
-  xlab("Tempo") +
-  ylab("Leituras (em MB)") +
-  theme(
-    strip.background = element_blank(),
-    strip.text.y = element_blank()
-  )
+  ylab("Dados lidos (em MB)") +
+  xlab("Tempo (s)")
 
-ggsave("emaas_read.png")
-
-# Only written
+save_plot("emaas_read.png")
 
 # Use only the first three applications
 emaas.resources.sample <- filter(emaas.resources, variable == "written_bytes" & 
@@ -245,54 +228,10 @@ emaas.resources.sample <- filter(emaas.resources, variable == "written_bytes" &
 ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
   geom_line() + 
   facet_grid(application_id ~ .) +
-  xlab("Tempo") +
-  ylab("Escritas (em MB)") +
-  theme(
-    strip.background = element_blank(),
-    strip.text.y = element_blank()
-  )
-
-ggsave("emaas_written.png")
-
-# All
-
-ggplot(filter(emaas.profile, variable != "host_cpu_usage"), aes(timestamp, value, group = application_id))+
-  geom_line() +
-  ylab("") + 
-  facet_grid(variable ~ application, scales = "free", 
-             labeller = labeller(variable = resources_labels,
-                                 application = application_labels))
-
-save_plot("emaas.png")
-
-ggplot(filter(emaas.profile, variable == "cpu_usage"), aes(timestamp, value, group = application_id)) +
-  geom_line() +
-  ylab("Uso de CPU (%)") +
-  xlab("Tempo (s)")
-
-save_plot("cpu_emaas.png")
-
-ggplot(filter(emaas.profile, variable == "read_bytes"), aes(timestamp, value, group = application_id)) +
-  geom_line() +
-  ylab("Dados lidos (em MB)") +
-  xlab("Tempo (s)")
-
-save_plot("read_bytes_emaas.png")
-
-ggplot(filter(emaas.profile, variable == "written_bytes"), aes(timestamp, value, group = application_id)) +
-  geom_line() +
   ylab("Dados escritos (em MB)") +
   xlab("Tempo (s)")
 
-save_plot("written_bytes_emaas.png")
-
-ggplot(filter(emaas.profile, variable == "progress"), aes(timestamp, 100*value, group = application_id)) +
-  geom_line() +
-  ylab("Progresso (em %)") +
-  xlab("Tempo (s)")
-
-save_plot("progress_emaas.png")
-
+save_plot("emaas_written.png")
 
 
 #
