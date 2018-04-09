@@ -16,7 +16,7 @@ theme_white <- function() {
 }
 
 save_plot <- function(filename) {
-  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 12, height = 6)
+  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 6, height = 6)
 }
 
 theme_set(theme_bw())
@@ -37,8 +37,12 @@ scaling_labels <- c(pid.all = "PID", pid.pd_only = "Proporcional-\nDerivativo",
                     pid.p_only = "Proporcional", `progress-error.regular` = "Min-Max",
                     pid.super_d = "PD ajustado")
 
-PLOT_DIRECTORY <- "plots_io"
-deadlines <- c(cpu_bound_scripted = 2060, pure_io = 2733)
+scaling_labels_eng <- c(pid.all = "PID", pid.pd_only = "Proportional-\nDerivative", 
+                    pid.p_only = "Proportional", `progress-error.regular` = "Min-Max",
+                    pid.super_d = "")
+
+PLOT_DIRECTORY <- "emaas"
+deadlines <- c(cpu_bound_scripted = 2060, pure_io = 2733, emaas = 2347)
 
 aggregated_data <- read.csv("aggregated.csv")
 resources_data <- read.csv("resources.csv")
@@ -362,6 +366,90 @@ ggplot(io_bound.adjusted_application, aes(application_conf, application_time),
                                  application_conf = scaling_labels))
 save_plot("io_bound.adjusted_application_time.png")
 
+
+#
+#
+### EMaaS
+#
+#
+
+emaas <- filter(aggregated_data, application == "emaas")
+
+#
+# Written bytes
+#
+
+emaas$written_bytes <- as.numeric(emaas$written_bytes)
+ggplot(emaas, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
+  geom_line() + 
+  xlab("Tempo") +
+  ylab("Dados escritos (em MB)") +
+  facet_grid(application_conf ~ ., scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("emaas_written.png")
+
+#
+# Read bytes
+#
+
+ggplot(emaas, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+  geom_line() + 
+  xlab("Tempo") +
+  ylab("Dados lidos (em MB)") +
+  facet_grid(application_conf ~ ., scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("emaas_read.png")
+
+#
+# CPU
+#
+
+ggplot(emaas, aes(timestamp, cpu_usage, group = application_id)) + 
+  geom_line() + 
+  xlab("Tempo") +
+  ylab("Uso de CPU") +
+  facet_grid(application ~ application_conf, scales = "free", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("emaas_cpu.png")
+
+#
+# Cap
+#
+
+ggplot(emaas, aes(timestamp, cap, group = application_id)) + 
+  geom_line() +
+  xlab("Tempo") +
+  ylab("Cap") +
+  #facet_grid(. ~ application_conf, scales = "free",
+  facet_grid(application_conf ~ ., scales = "free",
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
+save_plot("emaas_cap.png")
+
+#
+# Time
+#
+
+emaas.deadline <- deadlines["emaas"][[1]]
+ggplot(emaas, aes(application_conf, application_time),  
+       labeller = labeller(x = scaling_labels)) + 
+  #geom_boxplot() + 
+  geom_point() +
+  #xlab("Controlador") +
+  xlab("") +
+  #ylab("Tempo de execução") +
+  ylab("Execution time") +
+  geom_hline(aes(yintercept=emaas.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, emaas.deadline, label = paste("Deadline =", emaas.deadline), vjust = -1)) +
+  scale_x_discrete(labels=scaling_labels_eng)
+  #+
+  #facet_wrap(~application + application_conf,
+  #           labeller = labeller(application = application_labels, 
+  #                               application_conf = scaling_labels))
+save_plot("emaas_time.png")
 
 
 
