@@ -41,7 +41,7 @@ application_labels_pt <- c(cpu_bound_scripted_profile = "Aplicação limitada po
 
 scaling_labels_pt <- c(pid.all = "PID", pid.pd_only = "Proporcional-\nDerivativo", 
                        pid.p_only = "Proporcional", `progress-error.regular` = "Min-Max",
-                       pid.super_d = "PD ajustado")
+                       pid.super_d = "PD ajustado", pid.super_p = "Proporcional ajustado")
 
 actuator_labels_pt <- c(`kvm-io-tunnel` = "CPU + IO", `kvm-tunnel` = "CPU")
 
@@ -66,7 +66,7 @@ application_labels_eng <- c(cpu_bound_scripted_profile = "CPU bound microbenchma
 
 scaling_labels_eng <- c(pid.all = "PID", pid.pd_only = "Proportional-\nDerivative", 
                     pid.p_only = "Proportional", `progress-error.regular` = "Min-Max",
-                    pid.super_d = "Proportional-Derivative")
+                    pid.super_d = "Proportional-Derivative", pid.super_p = "Proportional")
 
 actuator_labels_eng <- c(`kvm-io-tunnel` = "CPU + IO", `kvm-tunnel` = "CPU")
 
@@ -493,7 +493,7 @@ save_plot("emaas_cpu.png")
 # Cap
 #
 
-ggplot(filter(emaas, instance_id %in% emaas$instance_id[c(1)]) , aes(timestamp, cap, group = application_id)) + 
+ggplot(filter(emaas, instance_id %in% unique(emaas$instance_id)[c(1,13)]) , aes(timestamp, cap, group = application_id)) + 
   geom_line() +
   xlab(other_labels["time"][[1]]) +
   ylab(other_labels["cap"][[1]]) +
