@@ -193,7 +193,7 @@ emaas.progress <- filter(progress_profile, application == "emaas")
 emaas.resources <- filter(resources_profile, application == "emaas") %>% melt(id=c("timestamp", "cap", "application", "application_id"))
 emaas.profile <- rbind(emaas.resources, data.frame(timestamp=emaas.progress$time, cap=70, application="emaas", application_id=emaas.progress$application_id, variable="progress", value=emaas.progress$progress))
 
-ggplot(emaas.progress, aes(time, progress, group = application_id)) + 
+ggplot(emaas.progress, aes(time, 100*progress, group = application_id)) + 
   geom_line() +
   ylab("Progresso (em %)") +
   xlab("Tempo (s)")

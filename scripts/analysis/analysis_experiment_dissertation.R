@@ -39,7 +39,7 @@ application_labels_pt <- c(cpu_bound_scripted_profile = "Aplicação limitada po
                            pure_io_profile = "Aplicação limitada por IO",
                            `pure-io-dist-adjusted` = "I/O ajustada")
 
-scaling_labels_pt <- c(pid.all = "PID", pid.pd_only = "Proporcional-\nDerivativo", 
+scaling_labels_pt <- c(pid.all = "PID", pid.pd_only = "Proporcional-Derivativo", 
                        pid.p_only = "Proporcional", `progress-error.regular` = "Min-Max",
                        pid.super_d = "PD ajustado", pid.super_p = "Proporcional ajustado")
 
@@ -82,7 +82,7 @@ others_eng <- c(controller = "Controller", execution_time = "Execution time", de
 #
 
 save_plot <- function(filename) {
-  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 11, height = 6)
+  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 10, height = 6)
 }
 
 #
@@ -114,7 +114,7 @@ if (exists("language")) {
 theme_set(theme_bw())
 theme_white()
 
-PLOT_DIRECTORY <- "emaas"
+PLOT_DIRECTORY <- "emaas_2nd"
 deadlines <- c(cpu_bound_scripted = 2060, pure_io = 2733, emaas = 2347)
 
 aggregated_data <- read.csv("aggregated.csv")
@@ -284,7 +284,9 @@ save_plot("io_bound_time.png")
 #
 #
 
-io_bound.adjusted_scaling <- filter(aggregated_data, application == "pure_io")
+#io_bound.adjusted_scaling <- filter(aggregated_data, application == "pure_io" || application_conf == "super")
+
+io_bound.adjusted_scaling <- aggregated_data
 
 #
 # Written bytes
@@ -295,7 +297,7 @@ ggplot(io_bound.adjusted_scaling, aes(timestamp, written_bytes/(1024*1024), grou
   geom_line() + 
   xlab("Tempo") +
   ylab("Dados escritos (em MB)") +
-  facet_grid(application_conf ~ ., scales = "free_x", 
+  facet_grid(. ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
 save_plot("io_bound.adjusted_scaling_written.png")
@@ -308,7 +310,7 @@ ggplot(io_bound.adjusted_scaling, aes(timestamp, read_bytes/(1024*1024), group =
   geom_line() + 
   xlab("Tempo") +
   ylab("Dados lidos (em MB)") +
-  facet_grid(application_conf ~ ., scales = "free_x", 
+  facet_grid(. ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
 save_plot("io_bound.adjusted_scaling_read.png")
@@ -335,7 +337,7 @@ ggplot(io_bound.adjusted_scaling, aes(timestamp, cap, group = application_id)) +
   xlab("Tempo") +
   ylab("Cap") +
   #facet_grid(. ~ application_conf, scales = "free",
-  facet_grid(application_conf ~ ., scales = "free",
+  facet_grid(. ~ application_conf, scales = "free",
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
 save_plot("io_bound.adjusted_scaling_cap.png")
@@ -352,7 +354,7 @@ ggplot(io_bound.adjusted_scaling, aes(application_conf, application_time),
   xlab("Controlador") +
   ylab("Tempo de execução") +
   geom_hline(aes(yintercept=io_bound.adjusted_scaling.deadline), color = "red", linetype="dashed") +
-  geom_text(aes(1, io_bound.adjusted_scaling.deadline, label = paste("Prazo =", io_bound.adjusted_scaling.deadline), vjust = -1)) +
+  geom_text(aes(1, io_bound.adjusted_scaling.deadline, label = paste("Prazo =", io_bound.adjusted_scaling.deadline), vjust = 2)) +
   scale_x_discrete(labels=scaling_labels)
 save_plot("io_bound.adjusted_scaling_time.png")
 
@@ -448,33 +450,89 @@ save_plot("io_bound.adjusted_application_time.png")
 #
 #
 
-emaas <- filter(aggregated_data, application == "emaas")
+emaas <- filter(aggregated_data, application == "emaas" &
+                  application_conf %in% c("pid.p_only", "pid.pd_only", "progress-error.regular"))
+
+emaas.adjusted.proportional <- filter(aggregated_data, application == "emaas" &
+                  application_conf %in% c("pid.super_p", "pid.p_only"))
+
+emaas.adjusted.derivative <- filter(aggregated_data, application == "emaas" &
+                                        application_conf %in% c("pid.super_d", "pid.pd_only"))
 
 #
 # Written bytes
 #
 
-ggplot(emaas, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
+ggplot(filter(emaas, instance_id %in% unique(emaas$instance_id)[c(1,13)]), aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
   xlab(other_labels["time"][[1]]) +
   ylab(resource_labels["written_bytes"][[1]]) +
-  facet_grid(application_conf ~ ., scales = "free_x", 
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
-                                 application_conf = scaling_labels))
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
 save_plot("emaas_written.png")
+
+ggplot(filter(emaas.adjusted.proportional), aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
+    geom_line() + 
+    xlab(other_labels["time"][[1]]) +
+    ylab(resource_labels["written_bytes"][[1]]) +
+    facet_grid(actuator ~ application_conf, scales = "free_x", 
+               labeller = labeller(application = application_labels, 
+                                   application_conf = scaling_labels,
+                                   actuator = actuator_labels))
+
+save_plot("emaas_written_adjusted_proportional.png")
+
+ggplot(filter(emaas.adjusted.derivative, instance_id %in% unique(emaas$instance_id)[c(1,13)]), aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
+  geom_line() +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["written_bytes"][[1]]) +
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
+save_plot("emaas_written_adjusted_derivative.png")
 
 #
 # Read bytes
 #
 
-ggplot(emaas, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+ggplot(filter(emaas, instance_id %in% unique(emaas$instance_id)[c(1,13)]), aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
   xlab(other_labels["time"][[1]]) +
   ylab(resource_labels["read_bytes"][[1]]) +
-  facet_grid(application_conf ~ ., scales = "free_x", 
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
-                                 application_conf = scaling_labels))
+                                 application_conf = scaling_labels, 
+                                 actuator = actuator_labels))
+
 save_plot("emaas_read.png")
+
+ggplot(filter(emaas.adjusted.proportional), aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+  geom_line() + 
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["read_bytes"][[1]]) +
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels, 
+                                 actuator = actuator_labels))
+
+save_plot("emaas_read_adjusted_proportional.png")
+
+ggplot(filter(emaas.adjusted.derivative, instance_id %in% unique(emaas$instance_id)[c(1,13)]), aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
+  geom_line() + 
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["read_bytes"][[1]]) +
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels, 
+                                 actuator = actuator_labels))
+
+save_plot("emaas_read_adjusted_derivative.png")
+
 
 #
 # CPU
@@ -484,10 +542,35 @@ ggplot(emaas, aes(timestamp, cpu_usage, group = application_id)) +
   geom_line() + 
   xlab(other_labels["time"][[1]]) +
   ylab(resource_labels["cpu_usage"][[1]]) +
-  facet_grid(application ~ application_conf, scales = "free", 
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
-                                 application_conf = scaling_labels))
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
 save_plot("emaas_cpu.png")
+
+ggplot(emaas.adjusted.proportional, aes(timestamp, cpu_usage, group = application_id)) + 
+  geom_line() + 
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["cpu_usage"][[1]]) +
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
+save_plot("emaas_cpu_adjusted_proportional.png")
+
+ggplot(emaas.adjusted.derivative, aes(timestamp, cpu_usage, group = application_id)) + 
+  geom_line() + 
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["cpu_usage"][[1]]) +
+  facet_grid(actuator ~ application_conf, scales = "free_x", 
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
+save_plot("emaas_cpu_adjusted_derivative.png")
+
 
 #
 # Cap
@@ -499,8 +582,33 @@ ggplot(filter(emaas, instance_id %in% unique(emaas$instance_id)[c(1,13)]) , aes(
   ylab(other_labels["cap"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free",
              labeller = labeller(application = application_labels, 
-                                 application_conf = scaling_labels))
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
 save_plot("emaas_cap.png")
+
+ggplot(filter(emaas.adjusted.proportional, instance_id %in% unique(emaas.adjusted.proportional$instance_id)[c(1,13, 26)]), aes(timestamp, cap, group = application_id)) + 
+  geom_line() +
+  xlab(other_labels["time"][[1]]) +
+  ylab(other_labels["cap"][[1]]) +
+  facet_grid(application ~ application_conf, scales = "free",
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
+save_plot("emaas_cap_adjusted_proportional.png")
+
+ggplot(filter(emaas.adjusted.derivative, instance_id %in% unique(emaas.adjusted.derivative$instance_id)[c(1,13, 26)]), aes(timestamp, cap, group = application_id)) + 
+  geom_line() +
+  xlab(other_labels["time"][[1]]) +
+  ylab(other_labels["cap"][[1]]) +
+  facet_grid(application ~ application_conf, scales = "free",
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels,
+                                 actuator = actuator_labels))
+
+save_plot("emaas_cap_adjusted_derivative.png")
+
 
 #
 # Time
@@ -521,6 +629,38 @@ ggplot(emaas.time, aes(application_conf, application_time)) +
   facet_grid(actuator ~ ., labeller = labeller(actuator = actuator_labels))
 
 save_plot("emaas_time.png")
+
+emaas.time.adjusted.proportional <- group_by(emaas.adjusted.proportional, application_conf, actuator, application_id) %>% 
+  summarize(application_time = mean(application_time))
+ggplot(emaas.time.adjusted.proportional, aes(application_conf, application_time)) + 
+  geom_boxplot(width = 0.3) + 
+  geom_point() +
+  xlab("") +
+  ylab(other_labels["execution_time"][[1]]) +
+  geom_hline(aes(yintercept=emaas.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, emaas.deadline, label = paste(other_labels["deadline"][[1]], 
+                                                 emaas.deadline), vjust = -1)) +
+  scale_x_discrete(labels = scaling_labels) +
+  facet_grid(actuator ~ ., labeller = labeller(actuator = actuator_labels))
+
+save_plot("emaas_time_adjusted_proportional.png")
+
+emaas.time.adjusted.derivative <- group_by(emaas.adjusted.derivative, application_conf, actuator, application_id) %>% 
+  summarize(application_time = mean(application_time))
+ggplot(emaas.time.adjusted.derivative, aes(application_conf, application_time)) + 
+  geom_boxplot(width = 0.3) + 
+  geom_point() +
+  xlab("") +
+  ylab(other_labels["execution_time"][[1]]) +
+  geom_hline(aes(yintercept=emaas.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, emaas.deadline, label = paste(other_labels["deadline"][[1]], 
+                                                 emaas.deadline), vjust = -1)) +
+  scale_x_discrete(labels = scaling_labels) +
+  facet_grid(actuator ~ ., labeller = labeller(actuator = actuator_labels))
+
+save_plot("emaas_time_adjusted_derivative.png")
+
+
 
 #
 # Summarized results - Boxplot, etc
