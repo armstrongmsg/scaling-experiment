@@ -16,14 +16,14 @@ theme_white <- function() {
 }
 
 save_plot <- function(filename) {
-  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 8, height = 6)
+  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 10, height = 7)
 }
 
 resources_labels <- c(cpu_usage = "CPU (%)", read_bytes = "Leitura (MB)",
                       written_bytes = "Escrita (MB)", host_cpu_usage = "host_cpu_usage", 
                       progress = "Progresso")
 
-application_labels <- c(cpu_bound_scripted_profile = "Aplicação limitada por CPU", 
+application_labels <- c(cpu_bound_scripted_experiment = "Aplicação limitada por CPU", 
                         cpu_bound_scripted = "Aplicação limitada por CPU",
                         emaas = "EMaaS", kmeans = "K-Means", wordcount_profile = "Wordcount", 
                         wordcount = "Wordcount", pure_io = "Aplicação limitada por IO",
@@ -203,11 +203,12 @@ save_plot("emaas_progress.png")
 # Use only the first three applications
 emaas.resources.sample <- filter(emaas.resources, variable == "cpu_usage" & 
                         application_id %in% unique(emaas.resources$application_id)[c(1,2,3)])
+emaas.resources.sample <- filter(emaas.resources.sample, emaas.resources.sample$value <= 100)
 ggplot(emaas.resources.sample, aes(timestamp, value, group = application_id)) + 
   geom_line() + 
   facet_grid(application_id ~ .) +
-  xlab("Tempo") +
-  ylab("Uso de CPU")
+  xlab("Tempo (s)") +
+  ylab("Uso de CPU (%)")
 
 save_plot("emaas_cpu.png")
 
@@ -238,13 +239,13 @@ save_plot("emaas_written.png")
 # CPU bound scripted (sem perturbações)
 #
 
-cpubound.progress <- filter(progress_profile, application == "cpu_bound_scripted_profile")
-cpubound.resources <- filter(resources_profile, application == "cpu_bound_scripted_profile") %>% 
+cpubound.progress <- filter(progress_profile, application == "cpu_bound_scripted_experiment")
+cpubound.resources <- filter(resources_profile, application == "cpu_bound_scripted_experiment") %>% 
                       melt(id=c("timestamp", "cap", "application", "application_id"))
 
 cpubound.profile <- rbind(cpubound.resources, 
                           data.frame(timestamp=cpubound.progress$time, cap=50, 
-                                     application="cpu_bound_scripted_profile", 
+                                     application="cpu_bound_scripted_experiment", 
                                      application_id=cpubound.progress$application_id, 
                                      variable="progress", value=cpubound.progress$progress))
 
@@ -291,13 +292,13 @@ save_plot("progress_cpubound_sem_perturbacao.png")
 # CPU bound scripted (com perturbações)
 #
 
-cpubound_dist.progress <- filter(progress_profile, application == "cpu_bound_scripted")
-cpubound_dist.resources <- filter(resources_profile, application == "cpu_bound_scripted") %>% 
+cpubound_dist.progress <- filter(progress_profile, application == "cpu_bound_scripted_experiment_dist")
+cpubound_dist.resources <- filter(resources_profile, application == "cpu_bound_scripted_experiment_dist") %>% 
   melt(id=c("timestamp", "cap", "application", "application_id"))
 
 cpubound_dist.profile <- rbind(cpubound_dist.resources, 
                           data.frame(timestamp=cpubound_dist.progress$time, cap=50, 
-                                     application="cpu_bound_scripted", 
+                                     application="cpu_bound_scripted_experiment_dist", 
                                      application_id=cpubound_dist.progress$application_id, 
                                      variable="progress", value=cpubound_dist.progress$progress))
 

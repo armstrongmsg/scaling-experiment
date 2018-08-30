@@ -35,13 +35,14 @@ application_labels_pt <- c(cpu_bound_scripted_profile = "Aplicação limitada po
                            cpu_bound_scripted = "Aplicação limitada por CPU",
                            cpu_bound_scripted_experiment = "Aplicação limitada por CPU",
                            emaas = "EMaaS", kmeans = "K-Means", wordcount_profile = "Wordcount", 
-                           wordcount = "Wordcount", pure_io = "I/O",
-                           pure_io_profile = "Aplicação limitada por IO",
+                           wordcount = "Wordcount", pure_io = "Aplicação limitada por I/O",
+                           pure_io_profile = "Aplicação limitada por I/O",
                            `pure-io-dist-adjusted` = "I/O ajustada")
 
 scaling_labels_pt <- c(pid.all = "PID", pid.pd_only = "Proporcional-Derivativo", 
                        pid.p_only = "Proporcional", `progress-error.regular` = "Min-Max",
-                       pid.super_d = "PD ajustado", pid.super_p = "Proporcional ajustado")
+                       pid.super_d = "Proporcional-Derivativo ajustado", pid.super_p = "Proporcional ajustado",
+                       no_controller = "Sem controlador")
 
 actuator_labels_pt <- c(`kvm-io-tunnel` = "CPU + IO", `kvm-tunnel` = "CPU")
 
@@ -49,8 +50,8 @@ resources_labels_pt <- c(cpu_usage = "CPU (%)", read_bytes = "Leitura (MB)",
                       written_bytes = "Escrita (MB)", host_cpu_usage = "host_cpu_usage", 
                       progress = "Progresso")
 
-others_pt <- c(controller = "Controlador", execution_time = "Tempo de execução", deadline = "Prazo = ", 
-               time = "Tempo", cap = "Cap")
+others_pt <- c(controller = "Controlador", execution_time = "Tempo de execução (s)", deadline = "Prazo em segundos = ", 
+               time = "Tempo (s)", cap = "Cap (%)")
 
 #
 # English
@@ -74,15 +75,15 @@ resources_labels_eng <- c(cpu_usage = "CPU (%)", read_bytes = "Read (MB)",
                          written_bytes = "Written (MB)", host_cpu_usage = "host_cpu_usage", 
                          progress = "Progress")
 
-others_eng <- c(controller = "Controller", execution_time = "Execution time", deadline = "Deadline = ", 
-                time = "Time", cap = "Cap")
+others_eng <- c(controller = "Controller", execution_time = "Execution time (s)", deadline = "Deadline in seconds = ", 
+                time = "Time (s)", cap = "Cap (%)")
 
 #
 # Plot
 #
 
 save_plot <- function(filename) {
-  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 10, height = 6)
+  ggsave(paste(PLOT_DIRECTORY, filename, sep = "/"), width = 12, height = 6)
 }
 
 #
@@ -114,7 +115,7 @@ if (exists("language")) {
 theme_set(theme_bw())
 theme_white()
 
-PLOT_DIRECTORY <- "emaas_2nd"
+PLOT_DIRECTORY <- "fixed"
 deadlines <- c(cpu_bound_scripted = 2060, pure_io = 2733, emaas = 2347)
 
 aggregated_data <- read.csv("aggregated.csv")
@@ -136,7 +137,7 @@ cpu_bound <- filter(aggregated_data, application == "cpu_bound_scripted_experime
 
 ggplot(cpu_bound, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
+  xlab("Tempo (s)") +
   ylab("Dados escritos (em MB)") +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
@@ -149,7 +150,7 @@ save_plot("cpu_bound_written.png")
 
 ggplot(cpu_bound, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
+  xlab("Tempo (s)") +
   ylab("Dados lidos (em MB)") +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
@@ -160,10 +161,10 @@ save_plot("cpu_bound_read.png")
 # CPU
 #
 
-ggplot(cpu_bound, aes(timestamp, cpu_usage, group = application_id)) + 
+ggplot(filter(cpu_bound, cpu_usage <= 100), aes(timestamp, cpu_usage, group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
-  ylab("Uso de CPU") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resources_labels["cpu_usage"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
@@ -175,11 +176,11 @@ save_plot("cpu_bound_cpu.png")
 
 ggplot(cpu_bound, aes(timestamp, cap, group = application_id)) + 
   geom_line() +
-  xlab("Time") +
-  ylab("Cap") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(other_labels["cap"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free",
-             labeller = labeller(application = application_labels_eng, 
-                                 application_conf = scaling_labels_eng))
+             labeller = labeller(application = application_labels, 
+                                 application_conf = scaling_labels))
 save_plot("cpu_bound_cap.png")
 
 #
@@ -187,15 +188,19 @@ save_plot("cpu_bound_cap.png")
 #
 
 cpu_bound.deadline <- deadlines["cpu_bound_scripted"][[1]]
-ggplot(cpu_bound, aes(application_conf, application_time),  
+cpu_bound.times <- unique(select(cpu_bound, application_id, 
+                                 application_time, application_conf))
+ggplot(cpu_bound.times, aes(application_conf, application_time),  
                 labeller = labeller(x = scaling_labels_eng)) + 
   geom_boxplot() + 
   geom_point() +
-  xlab("Controller") +
-  ylab("Execution time") +
+  xlab(other_labels["controller"][[1]]) +
+  ylab(other_labels["execution_time"][[1]]) +
   geom_hline(aes(yintercept=cpu_bound.deadline), color = "red", linetype="dashed") +
-  geom_text(aes(1, cpu_bound.deadline, label = paste("Deadline =", cpu_bound.deadline), vjust = -1)) +
-  scale_x_discrete(labels=scaling_labels_eng)
+  geom_text(aes(1, cpu_bound.deadline, label = paste(other_labels["deadline"][[1]], 
+                                                     cpu_bound.deadline), vjust = -1))  +
+  scale_x_discrete(labels=scaling_labels)
+
 save_plot("cpu_bound_time.png")
 
 
@@ -214,11 +219,12 @@ io_bound <- filter(aggregated_data, application == "pure_io" & application_conf 
 io_bound$written_bytes <- as.numeric(io_bound$written_bytes)
 ggplot(io_bound, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
-  ylab("Dados escritos (em MB)") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["written_bytes"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound_written.png")
 
 #
@@ -227,11 +233,12 @@ save_plot("io_bound_written.png")
 
 ggplot(io_bound, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
-  ylab("Dados lidos (em MB)") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["read_bytes"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound_read.png")
 
 #
@@ -245,6 +252,7 @@ ggplot(io_bound, aes(timestamp, cpu_usage, group = application_id)) +
   facet_grid(application ~ application_conf, scales = "free", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound_cpu.png")
 
 #
@@ -253,11 +261,12 @@ save_plot("io_bound_cpu.png")
 
 ggplot(io_bound, aes(timestamp, cap, group = application_id)) + 
   geom_line() +
-  xlab("Tempo") +
-  ylab("Cap") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(other_labels["cap"][[1]]) +
   facet_grid(application ~ application_conf, scales = "free",
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound_cap.png")
 
 #
@@ -265,15 +274,19 @@ save_plot("io_bound_cap.png")
 #
 
 io_bound.deadline <- deadlines["pure_io"][[1]]
-ggplot(io_bound, aes(application_conf, application_time),  
+io_bound.times <- unique(select(io_bound, application_id, 
+                                 application_time, application_conf))
+ggplot(io_bound.times, aes(application_conf, application_time),  
        labeller = labeller(x = scaling_labels)) + 
   geom_boxplot() + 
   geom_point() +
-  xlab("Controlador") +
-  ylab("Tempo de execução") +
+  xlab(other_labels["controller"][[1]]) +
+  ylab(other_labels["execution_time"][[1]]) +
   geom_hline(aes(yintercept=io_bound.deadline), color = "red", linetype="dashed") +
-  geom_text(aes(1, io_bound.deadline, label = paste("Prazo =", io_bound.deadline), vjust = -1)) +
+  geom_text(aes(1, io_bound.deadline, label = paste(other_labels["deadline"][[1]], 
+                                                    io_bound.deadline), vjust = -1))  +
   scale_x_discrete(labels=scaling_labels)
+
 save_plot("io_bound_time.png")
 
 
@@ -295,11 +308,12 @@ io_bound.adjusted_scaling <- aggregated_data
 io_bound.adjusted_scaling$written_bytes <- as.numeric(io_bound.adjusted_scaling$written_bytes)
 ggplot(io_bound.adjusted_scaling, aes(timestamp, written_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
-  ylab("Dados escritos (em MB)") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["written_bytes"][[1]]) +
   facet_grid(. ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound.adjusted_scaling_written.png")
 
 #
@@ -308,11 +322,12 @@ save_plot("io_bound.adjusted_scaling_written.png")
 
 ggplot(io_bound.adjusted_scaling, aes(timestamp, read_bytes/(1024*1024), group = application_id)) + 
   geom_line() + 
-  xlab("Tempo") +
-  ylab("Dados lidos (em MB)") +
+  xlab(other_labels["time"][[1]]) +
+  ylab(resource_labels["read_bytes"][[1]]) +
   facet_grid(. ~ application_conf, scales = "free_x", 
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound.adjusted_scaling_read.png")
 
 #
@@ -334,12 +349,12 @@ save_plot("io_bound.adjusted_scaling_cpu.png")
 
 ggplot(io_bound.adjusted_scaling, aes(timestamp, cap, group = application_id)) + 
   geom_line() +
-  xlab("Tempo") +
-  ylab("Cap") +
-  #facet_grid(. ~ application_conf, scales = "free",
+  xlab(other_labels["time"][[1]]) +
+  ylab(other_labels["cap"][[1]]) +
   facet_grid(. ~ application_conf, scales = "free",
              labeller = labeller(application = application_labels, 
                                  application_conf = scaling_labels))
+
 save_plot("io_bound.adjusted_scaling_cap.png")
 
 #
@@ -351,11 +366,13 @@ ggplot(io_bound.adjusted_scaling, aes(application_conf, application_time),
        labeller = labeller(x = scaling_labels)) + 
   geom_boxplot() + 
   geom_point() +
-  xlab("Controlador") +
-  ylab("Tempo de execução") +
-  geom_hline(aes(yintercept=io_bound.adjusted_scaling.deadline), color = "red", linetype="dashed") +
-  geom_text(aes(1, io_bound.adjusted_scaling.deadline, label = paste("Prazo =", io_bound.adjusted_scaling.deadline), vjust = 2)) +
+  xlab("Opção de ajuste") +
+  ylab(other_labels["execution_time"][[1]]) +
+  geom_hline(aes(yintercept=io_bound.deadline), color = "red", linetype="dashed") +
+  geom_text(aes(1, io_bound.adjusted_scaling.deadline, label = paste(other_labels["deadline"][[1]], 
+                                                                     io_bound.adjusted_scaling.deadline), vjust = 1.5))  +
   scale_x_discrete(labels=scaling_labels)
+
 save_plot("io_bound.adjusted_scaling_time.png")
 
 
@@ -538,7 +555,7 @@ save_plot("emaas_read_adjusted_derivative.png")
 # CPU
 #
 
-ggplot(emaas, aes(timestamp, cpu_usage, group = application_id)) + 
+ggplot(filter(emaas, cpu_usage <= 100), aes(timestamp, cpu_usage, group = application_id)) + 
   geom_line() + 
   xlab(other_labels["time"][[1]]) +
   ylab(resource_labels["cpu_usage"][[1]]) +
@@ -560,7 +577,7 @@ ggplot(emaas.adjusted.proportional, aes(timestamp, cpu_usage, group = applicatio
 
 save_plot("emaas_cpu_adjusted_proportional.png")
 
-ggplot(emaas.adjusted.derivative, aes(timestamp, cpu_usage, group = application_id)) + 
+ggplot(filter(emaas.adjusted.derivative, cpu_usage <= 100), aes(timestamp, cpu_usage, group = application_id)) + 
   geom_line() + 
   xlab(other_labels["time"][[1]]) +
   ylab(resource_labels["cpu_usage"][[1]]) +

@@ -52,7 +52,7 @@ if __name__ == '__main__':
         n_files = int(args[i + 1])
         file_sizes.append(file_size)
         number_of_files.append(n_files)
-        total_number_of_tasks += n_files*2
+        total_number_of_tasks += n_files*4
         
     base_data = get_base_data(block_size) 
     
@@ -83,7 +83,7 @@ if __name__ == '__main__':
             while output_file.read(block_size) != "":
                 pass
     
-            completed_tasks += 1
+            completed_tasks += 3
             log_progress(logger, total_number_of_tasks, completed_tasks)
     
             output_file.close()
