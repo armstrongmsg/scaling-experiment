@@ -45,7 +45,7 @@ scaling_labels_pt <- c(pid.all = "PID", pid.pd_only = "Proporcional-Derivativo",
                        pid.super_p = "Proporcional ajustado",
                        no_controller = "Sem controlador")
 
-actuator_labels_pt <- c(`kvm-io-tunnel` = "CPU + IO", `kvm-tunnel` = "CPU")
+actuator_labels_pt <- c(`kvm-io-tunnel` = "CPU + I/O", `kvm-tunnel` = "CPU")
 
 resources_labels_pt <- c(cpu_usage = "CPU (%)", read_bytes = "Leitura (MB)",
                          written_bytes = "Escrita (MB)", host_cpu_usage = "host_cpu_usage", 
@@ -73,7 +73,7 @@ scaling_labels_eng <- c(pid.all = "PID", pid.pd_only = "PD",
                         `pure-io-dist-adjusted` = "Linearization", 
                         `no_controller` = "None")
 
-actuator_labels_eng <- c(`kvm-io-tunnel` = "CPU + IO", `kvm-tunnel` = "CPU")
+actuator_labels_eng <- c(`kvm-io-tunnel` = "CPU + I/O", `kvm-tunnel` = "CPU")
 
 resources_labels_eng <- c(cpu_usage = "CPU (%)", read_bytes = "Read (MB)",
                           written_bytes = "Written (MB)", host_cpu_usage = "host_cpu_usage", 
