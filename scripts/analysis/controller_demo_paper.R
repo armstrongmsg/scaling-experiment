@@ -34,7 +34,7 @@ controller_labels <- c(`erro` = "Error", `prop` = "P",
 
 factor_p <- 0.5
 factor_d <- 4
-factor_i <- 0.05
+factor_i <- 0.07
 
 erro <- c(0, 0, 0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 
           0.1, 0.09, 0.08, 0.07, 0.06, 0.05, 0.04, 0.03, 0.02, 0.01, 0, 
@@ -48,7 +48,6 @@ diff_err[length(x)] <- 0
 df <- data.frame(time=x,erro=erro,diff_err=diff_err)
 df$prop <- -factor_p*df$erro
 df$deriv <- -(factor_p*df$erro + factor_d*df$diff_err)
-df$diff_err <- -df$diff_err
 df$cum_err <- cumsum(erro)
 df$pid <- -(factor_p*df$erro + factor_d*df$diff_err + factor_i*df$cum_err)
 min.max.data <- sapply(1:length(x), function(x) min.max(df$erro[x]))
