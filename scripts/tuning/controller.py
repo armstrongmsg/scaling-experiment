@@ -37,5 +37,5 @@ if __name__ == '__main__':
 
 	controller = Controller(proportional_gain, derivative_gain, integral_gain)
 	
-	app.run(host='0.0.0.0')
+	app.run(host='0.0.0.0', port=5002)
 
