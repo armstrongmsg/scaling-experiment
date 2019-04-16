@@ -23,11 +23,25 @@ class Controller:
 
 		return -1 * (proportional_component + derivative_component + integral_component)
 
+        def reset(self):
+                self.last_error = 0
+                self.sum_error = 0
+
 app = Flask(__name__)
 
 @app.route('/action/<error>', methods = ['GET'])
 def action(error):
-    return str(controller.decide_action(float(error))),200
+    return "%.5f" % (controller.decide_action(float(error))),200
+
+@app.route('/alive', methods = ['GET'])
+def alive():
+    return "",200
+
+@app.route('/reset', methods = ['POST'])
+def reset():
+    controller.reset()
+    return "",200
+    
 
 if __name__ == '__main__':
 

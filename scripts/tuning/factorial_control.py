@@ -22,6 +22,14 @@ class Factorial_Execution:
 
         self.ex.start()
 
+    def start_dist(self, args):
+        self.completed_tasks = 0
+        self.stop = False
+        self.stopped = False
+        self.ex = threading.Thread(target=self.calc_dist, args=(args,))
+
+        self.ex.start()
+
     def calc(self, n, number_of_times):
         calc_url = self.app_url + "/" + str(n)
         for i in xrange(number_of_times):
@@ -32,9 +40,33 @@ class Factorial_Execution:
                 self.stopped = True
                 break
 
+    def calc_dist(self, args):
+        ns = []
+        reps = []
+        for i in xrange(0, len(args), 2):
+            ns.append(int(args[i]))
+            reps.append(int(args[i + 1]))
+
+        for i in xrange(len(ns)):
+            number_of_times = reps[i]
+            n = ns[i]
+            calc_url = self.app_url + "/" + str(n)
+            for i in xrange(number_of_times):
+                requests.get(calc_url)
+                self.completed_tasks += 1
+
+                if self.stop:
+                    self.stopped = True
+                    break           
+
 @app.route('/start/<n>/<i>', methods = ['POST'])
 def start(n, i):
     ex.start(int(n), int(i))
+    return "",200
+
+@app.route('/start_dist/<args>', methods = ['POST'])
+def start_dist(args):
+    ex.start_dist(args.split("-"))
     return "",200
 
 @app.route('/tasks', methods = ['GET'])
