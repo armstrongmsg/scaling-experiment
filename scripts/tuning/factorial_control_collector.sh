@@ -81,11 +81,13 @@ do
 		completed_tasks=`curl -s $FACTORIAL_CONTROL_URL/tasks`
 		elapsed_time=$(( `date +%s%N` - $START_TIME_NANO ))
 		echo "$elapsed_time,$completed_tasks,$BASE-$CAP" >> "task.csv"
-		sleep 1
+		sleep 0.2
 	done
 
         echo "Change cap"
 	change_cap $VM_NAME $CAP
+
+	echo "$elapsed_time,$BASE-$CAP" >> "change.csv"
 
 	echo "Resuming performance monitoring"
 	while [ `date +%s` -lt $END_TIME ]
@@ -93,7 +95,7 @@ do
 		completed_tasks=`curl -s $FACTORIAL_CONTROL_URL/tasks`
 		elapsed_time=$(( `date +%s%N` - $START_TIME_NANO ))
 		echo "$elapsed_time,$completed_tasks,$BASE-$CAP" >> "task.csv"
-		sleep 1
+		sleep 0.2
 	done
 
 	echo "Stopping execution"
