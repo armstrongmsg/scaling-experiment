@@ -22,3 +22,4 @@ conf/scaling.cfg
 cpu_data*
 results
 infra/*.cfg
+.metadata
