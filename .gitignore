@@ -19,6 +19,7 @@ conf/manager.cfg
 conf/client_bigsea.cfg
 conf/scaler.cfg
 conf/scaling.cfg
+conf/tuning.cfg
 cpu_data*
 results
 infra/*.cfg

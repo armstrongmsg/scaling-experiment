@@ -1,8 +1,8 @@
 #!/bin/bash
 
 function start_application(){
-	scp factorial.py ubuntu@$VM_IP:/home/ubuntu > $LOG_FILE
-	ssh ubuntu@$VM_IP "at now <<< 'python factorial.py'" &> $LOG_FILE
+	scp $FACTORIAL_APPLICATION ubuntu@$VM_IP:/home/ubuntu > $LOG_FILE
+	ssh ubuntu@$VM_IP "at now <<< 'python $FACTORIAL_APPLICATION'" &> $LOG_FILE
 
 	# Checks if the application is ready
 	while [ $? -ne 0 ]
@@ -13,7 +13,7 @@ function start_application(){
 }
 
 function stop_application(){
-	PID="`ssh ubuntu@$VM_IP "ps xau | grep -v grep | grep factorial.py"`"
+	PID="`ssh ubuntu@$VM_IP "ps xau | grep -v grep | grep $FACTORIAL_APPLICATION"`"
 	PID="`echo $PID | awk '{print $2}'`"
 	ssh ubuntu@$VM_IP "kill $PID"
 }
@@ -41,7 +41,7 @@ function stop_execution(){
 }
 
 function start_controller(){
-	python controller.py $PROPORTIONAL_GAIN $DERIVATIVE_GAIN $INTEGRAL_GAIN > /dev/null & 
+	python $CONTROLLER $PROPORTIONAL_GAIN $DERIVATIVE_GAIN $INTEGRAL_GAIN > /dev/null & 
 	CONTROLLER_PID=$!
 	CONTROLLER_URL="http://$CONTROLLER_IP:$CONTROLLER_PORT"
 
@@ -67,13 +67,18 @@ function change_cap(){
 
 # --------------------------------------------------------------
 
-source "tuning.cfg"
+CONF_FILE="conf/tuning.cfg"
+FACTORIAL_APPLICATION="scripts/applications/factorial.py"
+CONTROLLER="scripts/utils/controller.py"
+LOAD_BALANCER="scripts/tuning/factorial_control.py"
+
+source $CONF_FILE
 
 echo "Starting application"
 start_application
 
-echo "Starting load control"
-python factorial_control.py $VM_IP $VM_PORT &> $LOG_FILE &
+echo "Starting load balancer"
+python $LOAD_BALANCER $VM_IP $VM_PORT &> $LOG_FILE &
 FACTORIAL_CONTROL_PID=$!
 FACTORIAL_CONTROL_URL="http://$FACTORIAL_CONTROL_IP:$FACTORIAL_CONTROL_PORT"
 
