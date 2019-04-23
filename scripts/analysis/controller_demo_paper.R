@@ -44,7 +44,7 @@ x <-seq(1, length(erro))
 
 df <- data.frame(time=x,erro=erro)
 diff_err <- sapply(2:length(x), function(x) df$erro[x] - df$erro[x-1])
-diff_err[length(x)] <- 0
+diff_err <- c(0, diff_err)
 df <- data.frame(time=x,erro=erro,diff_err=diff_err)
 df$prop <- -factor_p*df$erro
 df$deriv <- -(factor_p*df$erro + factor_d*df$diff_err)
