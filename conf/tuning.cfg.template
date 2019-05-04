@@ -4,6 +4,7 @@
 VM_NAME=
 VM_IP=
 VM_PORT=
+MASTER_IP=
 
 #
 # Workload configuration
@@ -11,19 +12,20 @@ VM_PORT=
 FACTORIAL_CONTROL_IP=
 FACTORIAL_CONTROL_PORT=
 WORKLOAD=
+N=
+TOTAL_TASKS=
 
 #
 # Experiment configuration
 # 
 BASE=
 CAPS=
-N=
-TOTAL_TASKS=
 WAIT_TIME=
 OBSERVED_TIME=
 LOG_FILE=
 OUTPUT_FILE=
 REPS=
+WAIT_COLLECT=
 
 #
 # Controller configuration
@@ -39,4 +41,3 @@ MAX_CAP=
 MIN_CAP=
 CAP_LOG_FILE=
 TIME_LOG_FILE=
-
