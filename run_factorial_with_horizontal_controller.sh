@@ -1,56 +1,48 @@
 #!/bin/bash
 
-function start_execution(){
-        curl -s -X POST $FACTORIAL_CONTROL_URL/start_dist/$WORKLOAD > $LOG_FILE
+function start_application(){
+	python $REDIS_CLIENT start $MASTER_IP 31851 $KUBE_CONFIG_FILE $INPUT_FILE &>> $LOG_FILE
+	REDIS_PORT=$(kubectl get services/redis-app -o go-template='{{(index .spec.ports 0).nodePort}}')
+}
 
-        while [ $? -ne 0 ]
-        do
-                sleep 1
-                curl -s -X POST $FACTORIAL_CONTROL_URL/start_dist/$WORKLOAD > $LOG_FILE
-        done
+function stop_application(){
+	python $REDIS_CLIENT stop $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2>> $LOG_FILE
+}
+
+function start_execution(){
+	python $REDIS_CLIENT data $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2>> $LOG_FILE
+
+	kubectl run factorial --env="REDIS_HOST=redis-app" --command=true /factorial/run.py \
+			--image=armstrongmsg/test-scaling:factorial_batch --replicas=$1 --port=5000 2>> $LOG_FILE
 }
 
 function stop_execution(){
-	curl -s -X POST $FACTORIAL_CONTROL_URL/stop
-	
-	STOPPED="`curl -s $FACTORIAL_CONTROL_URL/stopped`"
+	kubectl delete deployment factorial
+}
 
-	while [ $STOPPED != "True" ]
-	do
-		STOPPED="`curl -s $FACTORIAL_CONTROL_URL/stopped`"
-		sleep 1
-	done
+function change_replicas(){
+ 	kubectl scale deployments/factorial --replicas=$1
 }
 
 function reset_controller(){
 	curl -s -X POST $CONTROLLER_URL/reset
 }
 
-function change_replicas(){
-	kubectl scale deployments/factorial --replicas=$1
+function get_completed_tasks() {
+	len_queue="`python $REDIS_CLIENT len $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2> $LOG_FILE`"
+	echo $(( $TOTAL_TASKS - $len_queue )) 
 }
 
-# minikube start --vm-driver=kvm2
-# kubectl run factorial --image=armstrongmsg/test-scaling:factorial1 --port=5000
-# kubectl expose deployment/factorial --type="NodePort" --target-port=5000 --port=8080
-# export NODE_PORT=$(kubectl get services/factorial -o go-template='{{(index .spec.ports 0).nodePort}}')
-# curl $(minikube ip):$NODE_PORT/run/5000
+# --------------------------------------------------------------
 
+REDIS_CLIENT="scripts/utils/redis_client.py"
 CONF_FILE="conf/tuning.cfg"
 FACTORIAL_APPLICATION="scripts/applications/factorial.py"
 CONTROLLER="scripts/utils/controller.py"
-LOAD_BALANCER="scripts/tuning/factorial_control.py"
 
 source "$CONF_FILE"
 
 echo "time,tasks,change" > $OUTPUT_FILE
-
-echo "Starting load control"
-VM_IP="`minikube ip`"
-VM_PORT="`kubectl get services/factorial -o go-template='{{(index .spec.ports 0).nodePort}}'`"
-python $LOAD_BALANCER $VM_IP $VM_PORT &> $LOG_FILE &
-FACTORIAL_CONTROL_PID=$!
-FACTORIAL_CONTROL_URL="http://$FACTORIAL_CONTROL_IP:$FACTORIAL_CONTROL_PORT"
 
 echo "Starting controller"
 python $CONTROLLER $PROPORTIONAL_GAIN $DERIVATIVE_GAIN $INTEGRAL_GAIN > /dev/null & 
@@ -59,15 +51,15 @@ CONTROLLER_URL="http://$CONTROLLER_IP:$CONTROLLER_PORT"
 
 for rep in `seq 1 $REPS`
 do
-	echo "Creating starting replicas"
-	replicas=$STARTING_CAP
-	change_replicas $replicas
+	echo "Starting application"
+	start_application
 	
 	echo "Starting execution"
-	start_execution
-	START_TIME=`date +%s%n`
+	start_execution $STARTING_CAP
 	
-	completed_tasks=`curl -s $FACTORIAL_CONTROL_URL/tasks`
+	replicas=$STARTING_CAP
+	START_TIME=`date +%s%n`
+	completed_tasks=`get_completed_tasks`
 	
 	while [ $completed_tasks -lt $TOTAL_TASKS ]
 	do
@@ -82,9 +74,8 @@ do
 	
 		action=`curl -s $CONTROLLER_URL/action/$error`
 		action=`echo "(100*$action)/1" | bc`
-	
-		new_replicas=`echo "$replicas + $action" | bc`
-	
+		new_replicas=`echo "$replicas + ($action)" | bc`
+		
 		if [ $new_replicas -gt $MAX_CAP ]
 		then
 			new_replicas=$MAX_CAP
@@ -108,20 +99,21 @@ do
 		
 		sleep 5
 	
-		completed_tasks=`curl -s $FACTORIAL_CONTROL_URL/tasks`
+		completed_tasks=`get_completed_tasks`
 	done
 	
 	echo "$rep,$elapsed_time" >> $TIME_LOG_FILE
 
+	stop_execution
+	stop_application
+
 	echo "Reset controller"
 	reset_controller
+
+	sleep 20
 	
 	echo "--------------------------------------"
 done
 
 echo "Stopping controller"
 kill $CONTROLLER_PID
-
-echo "Stopping load control"
-kill $FACTORIAL_CONTROL_PID &> $LOG_FILE
-
