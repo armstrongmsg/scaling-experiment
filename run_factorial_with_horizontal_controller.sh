@@ -84,7 +84,8 @@ do
 			action="`curl -s $CONTROLLER_URL/action/$error 2> $LOG_FILE`"
 			action=`echo "(100*$action)/1" | bc`
 			new_replicas=`echo "$replicas + ($action)" | bc`
-			
+			calculated_replicas=$new_replicas
+						
 			if [ $new_replicas -gt $MAX_CAP ]
 			then
 				new_replicas=$MAX_CAP
@@ -99,9 +100,9 @@ do
 			change_replicas $replicas
 		
 			echo -en "\e[1A"
-			printf "progress:%.2f;time progress:%.2f; error:%.2f; action:%d; replicas:%d\n" \
-							$progress $time_progress $error $action $replicas
-			echo "$rep,$treatment,$rep-$treatment,$elapsed_time,$replicas" >> $CAP_LOG_FILE 
+			printf "progress:%.2f;time progress:%.2f; error:%.2f; action:%d; calculated:%d replicas:%d\n" \
+							$progress $time_progress $error $action $replicas $calculated_replicas
+			echo "$rep,$treatment,$rep-$treatment,$elapsed_time,$replicas,$calculated_replicas" >> $CAP_LOG_FILE 
 			
 			sleep 5
 		
