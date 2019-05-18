@@ -32,7 +32,7 @@ ggsave("times.png")
 
 ggplot(caps, aes(time, replicas, group = exec_id)) + 
   geom_line() + 
-  facet_grid(. ~ controller) +
+  facet_wrap(~controller) +
   xlab("Time (s)") +
   ylab("Replicas")
 
@@ -40,7 +40,7 @@ ggsave("replicas.png")
 
 ggplot(caps, aes(time, calculated_replicas, group = exec_id)) + 
   geom_line() + 
-  facet_grid(. ~ controller) +
+  facet_wrap(~ controller) +
   xlab("Time (s)") +
   ylab("Replicas")
 
