@@ -13,15 +13,15 @@ function start_execution(){
 	python $REDIS_CLIENT data $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2>> $LOG_FILE
 
 	kubectl run factorial --env="REDIS_HOST=redis-app" --command=true /factorial/run.py \
-			--image=armstrongmsg/test-scaling:factorial_batch --replicas=$1 --port=5000 &> $LOG_FILE
+			--image=armstrongmsg/test-scaling:factorial_batch --replicas=$1 --port=5000 &>> $LOG_FILE
 }
 
 function stop_execution(){
-	kubectl delete deployment factorial &> $LOG_FILE
+	kubectl delete deployment factorial &>> $LOG_FILE
 }
 
 function change_replicas(){
- 	kubectl scale deployments/factorial --replicas=$1 &> $LOG_FILE
+ 	kubectl scale deployments/factorial --replicas=$1 &>> $LOG_FILE
 }
 
 function reset_controller(){
@@ -29,7 +29,7 @@ function reset_controller(){
 }
 
 function get_completed_tasks() {
-	len_queue="`python $REDIS_CLIENT len $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2> $LOG_FILE`"
+	len_queue="`python $REDIS_CLIENT len $MASTER_IP $REDIS_PORT $KUBE_CONFIG_FILE $INPUT_FILE 2>> $LOG_FILE`"
 	echo $(( $TOTAL_TASKS - $len_queue )) 
 }
 
@@ -81,7 +81,7 @@ do
 		
 			error=`echo "$progress - $time_progress" | bc -l`
 		
-			action="`curl -s $CONTROLLER_URL/action/$error 2> $LOG_FILE`"
+			action="`curl -s $CONTROLLER_URL/action/$error 2>> $LOG_FILE`"
 			action=`echo "(100*$action)/1" | bc`
 			new_replicas=`echo "$replicas + ($action)" | bc`
 			calculated_replicas=$new_replicas
@@ -118,7 +118,7 @@ do
 		stop_application
 			
 		echo "Stopping controller"
-		kill $CONTROLLER_PID &> $LOG_FILE
+		kill $CONTROLLER_PID &>> $LOG_FILE
 		
 		echo "--------------------------------------"
 		
