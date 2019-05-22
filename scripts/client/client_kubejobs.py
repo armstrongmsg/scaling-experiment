@@ -118,8 +118,7 @@ def get_control_parameters(conf):
 
 if __name__ == '__main__':
     experiment_config_file = sys.argv[1]
-    experiment_config = ConfigParser.RawConfigParser()
-    #experiment_config_file = os.path.join(conf_dir, 'experiment.cfg')    
+    experiment_config = ConfigParser.RawConfigParser()  
     experiment_config.read(experiment_config_file)
     
     kube_config_file = experiment_config.get("experiment", "kube_config")
@@ -156,14 +155,14 @@ if __name__ == '__main__':
                 status = get_status(broker_ip, broker_port, job_id)
                 replicas = get_number_of_replicas(k8s_client, job_id)
                 if replicas is not None:
-                    output_file.write("%d,%s,%d,%f\n" % (rep, conf, replicas,time.time() - start_time))
+                    output_file.write("%s,%d,%s,%d,%f\n" % (job_id, rep, conf, replicas,time.time() - start_time))
                     output_file.flush()
                     
             end_time = time.time()
             execution_time = end_time - start_time
         
-        time_output_file.write("%d,%s,%f\n" % (rep, conf, execution_time))
-        time_output_file.flush()
+            time_output_file.write("%s,%d,%s,%f\n" % (job_id, rep, conf, execution_time))
+            time_output_file.flush()
         
     output_file.close()
     time_output_file.close()
