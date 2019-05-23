@@ -116,11 +116,11 @@ def get_default_control_parameters(conf):
     max_size = int(experiment_config.get(conf, "max_size"))
     actuator = experiment_config.get(conf, "actuator")
     check_interval = int(experiment_config.get(conf, "check_interval"))
-    trigger_down = int(experiment_config.get(conf, "max_size"))
-    trigger_up = int(experiment_config.get(conf, "max_size"))
+    trigger_down = int(experiment_config.get(conf, "trigger_down"))
+    trigger_up = int(experiment_config.get(conf, "trigger_up"))
     min_rep = int(experiment_config.get(conf, "min_rep"))
     max_rep = int(experiment_config.get(conf, "max_rep"))
-    actuation_size = int(experiment_config.get(conf, "max_size"))
+    actuation_size = int(experiment_config.get(conf, "actuation_size"))
     metric_source = experiment_config.get(conf, "metric_source")
     
     return {
