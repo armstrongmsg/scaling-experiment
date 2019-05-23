@@ -188,9 +188,8 @@ if __name__ == '__main__':
                 if replicas is not None:
                     output_file.write("%s,%d,%s,%d,%f\n" % (job_id, rep, conf, replicas,time.time() - start_time))
                     output_file.flush()
-                    
-            end_time = time.time()
-            execution_time = end_time - start_time
+
+            execution_time = get_execution_time(broker_ip, broker_port, job_id)
         
             time_output_file.write("%s,%d,%s,%f\n" % (job_id, rep, conf, execution_time))
             time_output_file.flush()
