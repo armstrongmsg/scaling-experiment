@@ -1,7 +1,6 @@
 import requests
 import json
 import ConfigParser
-import os
 import time
 import sys
 
@@ -77,7 +76,7 @@ def submit_application(experiment_config, conf):
         },
         "enable_auth":False
     }
-        
+
     url = "http://%s:%s/submissions" % (broker_ip, broker_port)
     
     headers = {'Content-Type': 'application/json'}
@@ -89,17 +88,16 @@ def submit_application(experiment_config, conf):
 # Parameter reading functions
 #
 #
-def get_control_parameters(conf):
-    schedule_strategy = experiment_config.get(conf, "schedule_strategy")
+def get_pid_control_parameters(conf):
     proportional_factor = float(experiment_config.get(conf, "proportional_factor"))
     derivative_factor = float(experiment_config.get(conf, "derivative_factor"))
     integrative_factor = float(experiment_config.get(conf, "integrative_factor"))
     actuator = experiment_config.get(conf, "actuator")
     min_rep = int(experiment_config.get(conf, "min_rep"))
     max_rep = int(experiment_config.get(conf, "max_rep"))
-    
-    control_parameters = {
-        "schedule_strategy":schedule_strategy, 
+        
+    return {
+        "schedule_strategy":"pid", 
         "actuator":actuator, 
         "check_interval":5, 
         "trigger_down":0, 
@@ -113,7 +111,40 @@ def get_control_parameters(conf):
             "derivative_factor":derivative_factor, 
             "integrative_factor":integrative_factor}
     }
+
+def get_default_control_parameters(conf):
+    max_size = int(experiment_config.get(conf, "max_size"))
+    actuator = experiment_config.get(conf, "actuator")
+    check_interval = int(experiment_config.get(conf, "check_interval"))
+    trigger_down = int(experiment_config.get(conf, "max_size"))
+    trigger_up = int(experiment_config.get(conf, "max_size"))
+    min_rep = int(experiment_config.get(conf, "min_rep"))
+    max_rep = int(experiment_config.get(conf, "max_rep"))
+    actuation_size = int(experiment_config.get(conf, "max_size"))
+    metric_source = experiment_config.get(conf, "metric_source")
     
+    return {
+        "schedule_strategy":"default", 
+        "max_size":max_size,
+        "actuator":actuator,
+        "check_interval":check_interval,
+        "trigger_down":trigger_down,
+        "trigger_up":trigger_up,
+        "min_rep":min_rep,
+        "max_rep":max_rep,
+        "actuation_size":actuation_size,
+        "metric_source":metric_source
+    }
+
+def get_control_parameters(conf):
+    schedule_strategy = experiment_config.get(conf, "schedule_strategy")
+    control_parameters = None
+    
+    if schedule_strategy == "pid":
+        control_parameters = get_pid_control_parameters(conf)
+    elif schedule_strategy == "default":
+        control_parameters = get_default_control_parameters(conf)
+     
     return control_parameters
 
 if __name__ == '__main__':

@@ -1,0 +1,20 @@
+[broker]
+broker_ip = 
+broker_port = 
+
+[application]
+image_name = 
+redis_workload = 
+init_size = 
+expected_time = 
+
+[experiment]
+kube_config = 
+output_file = 
+time_output_file = 
+confs = 
+reps = 
+
+[conf]
+arg0 = 
+arg1 = 
