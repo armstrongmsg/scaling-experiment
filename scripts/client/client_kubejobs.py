@@ -162,6 +162,8 @@ if __name__ == '__main__':
     broker_ip = experiment_config.get("broker", "broker_ip")
     broker_port = experiment_config.get("broker", "broker_port")
 
+    wait_after_execution = float(experiment_config.get("experiment", "wait_after_execution"))
+    wait_check = float(experiment_config.get("experiment", "wait_check"))
     scaling_confs = experiment_config.get("experiment", "confs").split()
     reps = int(experiment_config.get("experiment", "reps"))
     init_sizes = experiment_config.get("experiment", "init_size").split()
@@ -180,13 +182,13 @@ if __name__ == '__main__':
                 status = get_status(broker_ip, broker_port, job_id)
         
                 while status != 'ongoing':
-                    time.sleep(1)
+                    time.sleep(wait_check)
                     status = get_status(broker_ip, broker_port, job_id)
                 
                 start_time = time.time()
                 
                 while status != 'completed':
-                    time.sleep(1)
+                    time.sleep(wait_check)
                     status = get_status(broker_ip, broker_port, job_id)
                     replicas = get_number_of_replicas(k8s_client, job_id)
                     if replicas is not None:
@@ -197,6 +199,10 @@ if __name__ == '__main__':
             
                 time_output_file.write("%s,%d,%s,%f,%d\n" % (job_id, rep, conf, execution_time, init_size))
                 time_output_file.flush()
+                
+                print ("Finished execution")
+                
+                time.sleep(wait_after_execution)
         
     output_file.close()
     time_output_file.close()

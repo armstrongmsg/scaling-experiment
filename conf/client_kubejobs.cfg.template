@@ -5,7 +5,6 @@ broker_port =
 [application]
 image_name = 
 redis_workload = 
-init_size = 
 expected_time = 
 
 [experiment]
@@ -14,6 +13,9 @@ output_file =
 time_output_file = 
 confs = 
 reps = 
+init_size = 
+wait_check = 
+wait_after_execution = 
 
 [conf]
 arg0 = 

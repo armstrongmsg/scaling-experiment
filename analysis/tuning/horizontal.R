@@ -17,8 +17,8 @@ theme_white <- function() {
 theme_set(theme_bw())
 theme_white()
 
-caps <- read.csv("cap.log")
-times <- read.csv("time.log")
+caps <- read.csv("cap.csv")
+times <- read.csv("time.csv")
 
 deadline <- 749
 
@@ -32,7 +32,7 @@ ggsave("times.png")
 
 ggplot(caps, aes(time, replicas, group = exec_id)) + 
   geom_line() + 
-  facet_wrap(~controller) +
+  facet_wrap(~controller, ncol = 1) +
   xlab("Time (s)") +
   ylab("Replicas")
 
