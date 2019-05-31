@@ -4,23 +4,41 @@ import ConfigParser
 import time
 import sys
 import signal
+import logging
 
 from kubernetes import client, config
 
+class Log:
+    def __init__(self, name, output_file_path):
+        self.logger = logging.getLogger(name)
+        if not len(self.logger.handlers):
+            handler = logging.StreamHandler()
+            handler.setLevel(logging.INFO)
+            self.logger.addHandler(handler)
+            handler = logging.FileHandler(output_file_path)
+            self.logger.addHandler(handler)
+
+    def log(self, text):
+        self.logger.info(text)
+
+def configure_logging(logging_level="INFO"):
+    levels = {"CRITICAL": logging.CRITICAL, "DEBUG": logging.DEBUG,
+              "ERROR": logging.ERROR, "FATAL": logging.FATAL,
+              "INFO": logging.INFO, "NOTSET": logging.NOTSET,
+              "WARN": logging.WARN, "WARNING": logging.WARNING
+              }
+
+    logging.basicConfig(level=levels[logging_level])
+
 class CSVFile:
     def __init__(self, output_file_name, header):
-        self.output_file = open(output_file_name, "w")
-        self.output_file.write(header.strip() + "\n")
-        
-    def clean_up(self):
-        self.output_file.close()
+        configure_logging()
+        self.output_log = Log(output_file_name, output_file_name)
+        self.output_log.log(header.strip())
         
     def writeline(self, *fields):
         line = ",".join(str(e) for e in fields)
-        line += "\n"
-        
-        self.output_file.write(line)
-        self.output_file.flush()
+        self.output_log.log(line)
 
 class GracefulKiller:
     kill_now = False
@@ -200,11 +218,13 @@ class Experiment:
         self.kube_config_file = self.experiment_config.get("experiment", "kube_config")
         self.output_file_name = self.experiment_config.get("experiment", "output_file")
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
+        self.log_file = self.experiment_config.get("experiment", "log_file")
         
         self.cap_output = CSVFile(self.output_file_name, 
                                       "exec_id,rep,controller,replicas,time,init_size")
         self.time_output = CSVFile(self.time_output_file_name, 
                                        "exec_id,rep,controller,execution_time,init_size")
+        self.log = Log("experiment", self.log_file)
         
         self.k8s_client = get_k8s_client(self.kube_config_file)
         self.output_file = open(self.output_file_name, "w")
@@ -230,6 +250,7 @@ class Experiment:
             return DefaultController(experiment_config, conf)
 
     def _cleanup(self):
+        self.log.log("Stopping execution at user request")
         self.broker_client.stop_application(self.job_id)
 
     def _wait_for_application_to_start(self, job_id):
@@ -253,7 +274,7 @@ class Experiment:
             time.sleep(self.wait_check)
             
             if self.killer.kill_now:
-                self._cleanup(job_id)
+                self._cleanup()
                 raise KeyboardInterrupt()
             
             status = self.broker_client.get_status(job_id)
@@ -266,14 +287,14 @@ class Experiment:
 
     def run_experiment(self):
         for rep in xrange(self.reps):
-            print("Rep:%d" % rep)
+            self.log.log("Rep:%d" % rep)
             
             for i in xrange(len(self.init_sizes)):
                 init_size = int(self.init_sizes[i])
-                print("Init size:%s" % init_size)
+                self.log.log("Init size:%s" % init_size)
             
                 for conf in self.scaling_confs:
-                    print("Conf:%s" % conf)
+                    self.log.log("Conf:%s" % conf)
             
                     controller = self._get_controller(self.experiment_config, conf)
                     job_id = self.broker_client.submit_application(controller, 
@@ -285,14 +306,12 @@ class Experiment:
                     execution_time = self._wait_for_application_to_finish(job_id, rep, conf, init_size)
 
                     self.time_output.writeline(job_id, rep, conf, execution_time, init_size)
-
-                    print("Finished execution")
+                    
+                    self.log.log("Finished execution")
                     
                     time.sleep(self.wait_after_execution)
         
         #TODO: zip files?
-        self.time_output.clean_up()
-        self.cap_output.clean_up()
     
 if __name__ == '__main__':
     experiment_config_file = sys.argv[1]
@@ -301,7 +320,7 @@ if __name__ == '__main__':
     try:
         experiment.run_experiment()
     except KeyboardInterrupt:
-        print("Stopping execution on user request")
+        print("Stopping execution at user request")
     except Exception as e:
         if experiment is not None:
             experiment._cleanup()

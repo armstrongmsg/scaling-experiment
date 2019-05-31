@@ -11,6 +11,7 @@ expected_time =
 kube_config = 
 output_file = 
 time_output_file = 
+log_file = 
 confs = 
 reps = 
 init_size = 
