@@ -7,6 +7,21 @@ import signal
 
 from kubernetes import client, config
 
+class CSVFile:
+    def __init__(self, output_file_name, header):
+        self.output_file = open(output_file_name, "w")
+        self.output_file.write(header.strip() + "\n")
+        
+    def clean_up(self):
+        self.output_file.close()
+        
+    def writeline(self, *fields):
+        line = ",".join(str(e) for e in fields)
+        line += "\n"
+        
+        self.output_file.write(line)
+        self.output_file.flush()
+
 class GracefulKiller:
     kill_now = False
     def __init__(self):
@@ -186,6 +201,11 @@ class Experiment:
         self.output_file_name = self.experiment_config.get("experiment", "output_file")
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
         
+        self.cap_output = CSVFile(self.output_file_name, 
+                                      "exec_id,rep,controller,replicas,time,init_size")
+        self.time_output = CSVFile(self.time_output_file_name, 
+                                       "exec_id,rep,controller,execution_time,init_size")
+        
         self.k8s_client = get_k8s_client(self.kube_config_file)
         self.output_file = open(self.output_file_name, "w")
         self.time_output_file = open(self.time_output_file_name, "w")
@@ -239,11 +259,10 @@ class Experiment:
             status = self.broker_client.get_status(job_id)
             replicas = get_number_of_replicas(self.k8s_client, job_id)
             if replicas is not None:
-                #TODO: improve logging
-                self.output_file.write("%s,%d,%s,%d,%f,%d\n" % (job_id, rep, conf, 
-                                                                replicas,time.time() - \
-                                                                start_time, init_size))
-                self.output_file.flush()
+                self.cap_output.writeline(job_id, rep, conf, replicas, time.time() - \
+                                                                start_time, init_size)
+                
+        return time.time() - start_time
 
     def run_experiment(self):
         for rep in xrange(self.reps):
@@ -263,25 +282,17 @@ class Experiment:
 
                     self._wait_for_application_to_start(job_id)
                     
-                    start_time = time.time()
-                    
-                    self._wait_for_application_to_finish(job_id, rep, conf, init_size)
+                    execution_time = self._wait_for_application_to_finish(job_id, rep, conf, init_size)
 
-                    execution_time = time.time() - start_time
-                
-                    #TODO: improve logging
-                    self.time_output_file.write("%s,%d,%s,%f,%d\n" % (job_id, rep, conf, 
-                                                                      execution_time, init_size))
-                    self.time_output_file.flush()
-                    
+                    self.time_output.writeline(job_id, rep, conf, execution_time, init_size)
+
                     print("Finished execution")
                     
                     time.sleep(self.wait_after_execution)
         
-        #TODO: improve logging
         #TODO: zip files?
-        self.output_file.close()
-        self.time_output_file.close()
+        self.time_output.clean_up()
+        self.cap_output.clean_up()
     
 if __name__ == '__main__':
     experiment_config_file = sys.argv[1]
