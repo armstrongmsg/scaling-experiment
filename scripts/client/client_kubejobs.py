@@ -46,7 +46,7 @@ class Broker_Client:
 
     def get_status(self, job_id):
         r = requests.get('http://%s:%s/submissions/%s' % (self.broker_ip, self.broker_port, job_id))
-        return str(r.json()[job_id]['status'])
+        return str(r.json()['status'])
     
     #FIXME: api should be fixed
     def get_execution_time(self, job_id):
@@ -198,6 +198,8 @@ class Experiment:
         self.scaling_confs = self.experiment_config.get("experiment", "confs").split()
         self.reps = int(self.experiment_config.get("experiment", "reps"))
         self.init_sizes = self.experiment_config.get("experiment", "init_size").split()
+        
+        self.job_id = None
 
     def _get_controller(self, experiment_config, conf):
         schedule_strategy = experiment_config.get(conf, "schedule_strategy")
@@ -207,8 +209,8 @@ class Experiment:
         elif schedule_strategy == "default":
             return DefaultController(experiment_config, conf)
 
-    def _cleanup(self, job_id):
-        self.broker_client.stop_application(job_id)
+    def _cleanup(self):
+        self.broker_client.stop_application(self.job_id)
 
     def _wait_for_application_to_start(self, job_id):
         status = self.broker_client.get_status(job_id)
@@ -217,7 +219,7 @@ class Experiment:
             time.sleep(self.wait_check)
             
             if self.killer.kill_now:
-                self._cleanup(job_id)
+                self._cleanup()
                 raise KeyboardInterrupt()
             
             status = self.broker_client.get_status(job_id)
@@ -257,11 +259,15 @@ class Experiment:
                     controller = self._get_controller(self.experiment_config, conf)
                     job_id = self.broker_client.submit_application(controller, 
                                                 self.experiment_config, init_size)
+                    self.job_id = job_id
 
                     self._wait_for_application_to_start(job_id)
+                    
+                    start_time = time.time()
+                    
                     self._wait_for_application_to_finish(job_id, rep, conf, init_size)
 
-                    execution_time = self.broker_client.get_execution_time(job_id)
+                    execution_time = time.time() - start_time
                 
                     #TODO: improve logging
                     self.time_output_file.write("%s,%d,%s,%f,%d\n" % (job_id, rep, conf, 
@@ -286,4 +292,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("Stopping execution on user request")
     except Exception as e:
-        print(e)
+        if experiment is not None:
+            experiment._cleanup()
+        raise e
+            
