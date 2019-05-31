@@ -10,6 +10,11 @@ import os
 
 from kubernetes import client, config
 
+#
+#
+# Utils
+#
+#
 def zip_files(zip_name, *file_names):
     zipf = zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED)
     
@@ -86,6 +91,9 @@ class Broker_Client:
     def __init__(self, experiment_config):
         self.broker_ip = experiment_config.get("broker", "broker_ip")
         self.broker_port = experiment_config.get("broker", "broker_port")
+        self.enable_auth = experiment_config.get("authentication", "user") == "True"
+        self.user = experiment_config.get("authentication", "user")
+        self.password = experiment_config.get("authentication", "password")
 
     def get_status(self, job_id):
         r = requests.get('http://%s:%s/submissions/%s' % (self.broker_ip, self.broker_port, job_id))
@@ -98,10 +106,9 @@ class Broker_Client:
     
     def stop_application(self, job_id):
         body = {
-            #FIXME: this should be read from the config file
-            "username" : "usr",
-            "password" : "psswrd",
-            "enable_auth" : False
+            "username" : self.user,
+            "password" : self.password,
+            "enable_auth" : self.enable_auth
         }
             
         headers = {'Content-Type': 'application/json'}
@@ -113,9 +120,8 @@ class Broker_Client:
         expected_time = int(experiment_config.get("application", "expected_time"))
         image_name = experiment_config.get("application", "image_name")
         redis_workload = experiment_config.get("application", "redis_workload")
-        #FIXME: this should be read from the config file
-        command = [
-            "/factorial/run.py"]
+        application_command = experiment_config.get("application", "command")
+        command = [ application_command ]
 
         monitor_parameters = {
             "expected_time":expected_time, 
@@ -124,27 +130,25 @@ class Broker_Client:
     
         body = {
             "plugin":"kubejobs",
-            "username":"usr",
-            "password":"psswrd",
+            "username":self.user,
+            "password":self.password,
             "plugin_info":{  
-            "cmd":command,
-            "img":image_name,
-            "init_size":init_size,
-            "redis_workload":redis_workload,
-            "config_id":"id",
-            "control_plugin":"kubejobs",
-            "control_parameters":control_parameters,
-            "monitor_plugin":"kubejobs",
-            "monitor_info":monitor_parameters,
-            #FIXME: this should be read from the config file
-            "enable_visualizer":False,
-            "visualizer_plugin":"k8s-grafana",
-            "visualizer_info":{  
-             "c":"c"},
-            "env_vars":{  
-             "d":"d"}
+                "cmd":command,
+                "img":image_name,
+                "init_size":init_size,
+                "redis_workload":redis_workload,
+                "config_id":"id",
+                "control_plugin":"kubejobs",
+                "control_parameters":control_parameters,
+                "monitor_plugin":"kubejobs",
+                "monitor_info":monitor_parameters,
+                #TODO: this should be read from the config file
+                "enable_visualizer":False,
+                "visualizer_plugin":"k8s-grafana",
+                "visualizer_info":{},
+                "env_vars":{}
             },
-            "enable_auth":False
+            "enable_auth":self.enable_auth
         }
     
         url = "http://%s:%s/submissions" % (self.broker_ip, self.broker_port)
@@ -182,7 +186,8 @@ class PIDController:
             "heuristic_options":{
                 "proportional_factor":self.proportional_factor, 
                 "derivative_factor":self.derivative_factor, 
-                "integrative_factor":self.integrative_factor}
+                "integrative_factor":self.integrative_factor
+            }
         }
 
 class DefaultController:
@@ -226,11 +231,13 @@ class Experiment:
         self.experiment_config = ConfigParser.RawConfigParser()  
         self.experiment_config.read(experiment_config_file)
         
+        #
+        # Logging
+        #
         self.kube_config_file = self.experiment_config.get("experiment", "kube_config")
         self.output_file_name = self.experiment_config.get("experiment", "output_file")
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
         self.log_file = self.experiment_config.get("experiment", "log_file")
-        
         self.archive_directory = self.experiment_config.get("experiment", "archive_directory")
         
         if not os.path.isdir(self.archive_directory):
@@ -245,6 +252,9 @@ class Experiment:
         self.k8s_client = get_k8s_client(self.kube_config_file)
         self.broker_client = Broker_Client(self.experiment_config)
         
+        #
+        # Experiment config
+        #
         self.wait_after_execution = float(self.experiment_config.get("experiment", 
                                                                      "wait_after_execution"))
         self.wait_check = float(self.experiment_config.get("experiment", "wait_check"))
@@ -263,7 +273,6 @@ class Experiment:
             return DefaultController(experiment_config, conf)
 
     def _cleanup(self):
-        self.log.log("Stopping execution at user request")
         self.broker_client.stop_application(self.job_id)
 
     def _wait_for_application_to_start(self, job_id):
@@ -295,7 +304,7 @@ class Experiment:
             if replicas is not None:
                 self.cap_output.writeline(job_id, rep, conf, replicas, time.time() - \
                                                                 start_time, init_size)
-                
+
         return time.time() - start_time
     
     def _backup_experiment_data(self):
@@ -321,13 +330,11 @@ class Experiment:
                     job_id = self.broker_client.submit_application(controller, 
                                                 self.experiment_config, init_size)
                     self.job_id = job_id
-
                     self._wait_for_application_to_start(job_id)
                     
                     execution_time = self._wait_for_application_to_finish(job_id, rep, conf, init_size)
 
                     self.time_output.writeline(job_id, rep, conf, execution_time, init_size)
-                    
                     self.log.log("Finished execution")
                     
                     time.sleep(self.wait_after_execution)
@@ -342,8 +349,8 @@ if __name__ == '__main__':
         experiment.run_experiment()
     except KeyboardInterrupt:
         print("Stopping execution at user request")
-    except Exception as e:
+        if experiment is not None:
+            experiment.log.log("Stopping execution at user request")
+    finally:
         if experiment is not None:
             experiment._cleanup()
-        raise e
-            

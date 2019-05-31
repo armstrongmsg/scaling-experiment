@@ -2,10 +2,16 @@
 broker_ip = 
 broker_port = 
 
+[authentication]
+enable_auth = 
+user = 
+password = 
+
 [application]
 image_name = 
 redis_workload = 
 expected_time = 
+command = 
 
 [experiment]
 kube_config = 
