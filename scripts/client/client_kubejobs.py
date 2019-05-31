@@ -5,8 +5,18 @@ import time
 import sys
 import signal
 import logging
+import zipfile
+import os
 
 from kubernetes import client, config
+
+def zip_files(zip_name, *file_names):
+    zipf = zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED)
+    
+    for file_name in file_names:
+        zipf.write(file_name)
+    
+    zipf.close()
 
 class Log:
     def __init__(self, name, output_file_path):
@@ -212,6 +222,7 @@ class Experiment:
 
     def __init__(self, experiment_config_file):
         self.killer = GracefulKiller()
+        self.experiment_config_file = experiment_config_file
         self.experiment_config = ConfigParser.RawConfigParser()  
         self.experiment_config.read(experiment_config_file)
         
@@ -220,6 +231,11 @@ class Experiment:
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
         self.log_file = self.experiment_config.get("experiment", "log_file")
         
+        self.archive_directory = self.experiment_config.get("experiment", "archive_directory")
+        
+        if not os.path.isdir(self.archive_directory):
+            raise Exception("Archive directory does not exist")
+        
         self.cap_output = CSVFile(self.output_file_name, 
                                       "exec_id,rep,controller,replicas,time,init_size")
         self.time_output = CSVFile(self.time_output_file_name, 
@@ -227,9 +243,6 @@ class Experiment:
         self.log = Log("experiment", self.log_file)
         
         self.k8s_client = get_k8s_client(self.kube_config_file)
-        self.output_file = open(self.output_file_name, "w")
-        self.time_output_file = open(self.time_output_file_name, "w")
-        
         self.broker_client = Broker_Client(self.experiment_config)
         
         self.wait_after_execution = float(self.experiment_config.get("experiment", 
@@ -284,6 +297,14 @@ class Experiment:
                                                                 start_time, init_size)
                 
         return time.time() - start_time
+    
+    def _backup_experiment_data(self):
+        archive_filename = os.path.join(self.archive_directory, 
+                                        "%s.zip" % (time.strftime("%Y%m%d-%H%M%S")))
+        zip_files(archive_filename, self.output_file_name, 
+                                    self.time_output_file_name, 
+                                    self.log_file,
+                                    self.experiment_config_file)
 
     def run_experiment(self):
         for rep in xrange(self.reps):
@@ -310,8 +331,8 @@ class Experiment:
                     self.log.log("Finished execution")
                     
                     time.sleep(self.wait_after_execution)
-        
-        #TODO: zip files?
+                    
+        self._backup_experiment_data()
     
 if __name__ == '__main__':
     experiment_config_file = sys.argv[1]
