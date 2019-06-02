@@ -165,9 +165,9 @@ class Broker_Client:
 class PIDController:
     
     def __init__(self, experiment_config, conf):
-        self.proportional_factor = float(experiment_config.get(conf, "proportional_factor"))
-        self.derivative_factor = float(experiment_config.get(conf, "derivative_factor"))
-        self.integrative_factor = float(experiment_config.get(conf, "integrative_factor"))
+        self.proportional_gain = float(experiment_config.get(conf, "proportional_gain"))
+        self.derivative_gain = float(experiment_config.get(conf, "derivative_gain"))
+        self.integral_gain = float(experiment_config.get(conf, "integral_gain"))
         self.actuator = experiment_config.get(conf, "actuator")
         self.min_rep = int(experiment_config.get(conf, "min_rep"))
         self.max_rep = int(experiment_config.get(conf, "max_rep"))
@@ -184,9 +184,9 @@ class PIDController:
             "actuation_size":1, 
             "metric_source":"redis", 
             "heuristic_options":{
-                "proportional_factor":self.proportional_factor, 
-                "derivative_factor":self.derivative_factor, 
-                "integrative_factor":self.integrative_factor
+                "proportional_gain":self.proportional_gain, 
+                "derivative_gain":self.derivative_gain, 
+                "integral_gain":self.integral_gain
             }
         }
 
