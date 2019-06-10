@@ -171,12 +171,13 @@ class PIDController:
         self.actuator = experiment_config.get(conf, "actuator")
         self.min_rep = int(experiment_config.get(conf, "min_rep"))
         self.max_rep = int(experiment_config.get(conf, "max_rep"))
+        self.check_interval = int(experiment_config.get(conf, "check_interval"))
             
     def get_parameters(self):
         return {
             "schedule_strategy":"pid", 
             "actuator":self.actuator, 
-            "check_interval":5, 
+            "check_interval":self.check_interval,
             "trigger_down":0, 
             "trigger_up":0, 
             "min_rep":self.min_rep, 
