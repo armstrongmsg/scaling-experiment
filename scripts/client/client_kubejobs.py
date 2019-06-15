@@ -7,8 +7,11 @@ import signal
 import logging
 import zipfile
 import os
+import ast
+import redis
 
 from kubernetes import client, config
+
 
 #
 #
@@ -94,6 +97,8 @@ class Broker_Client:
         self.enable_auth = experiment_config.get("authentication", "user") == "True"
         self.user = experiment_config.get("authentication", "user")
         self.password = experiment_config.get("authentication", "password")
+        
+        self.redis_client = None
 
     def get_status(self, job_id):
         r = requests.get('http://%s:%s/submissions/%s' % (self.broker_ip, self.broker_port, job_id))
@@ -245,7 +250,7 @@ class Experiment:
             raise Exception("Archive directory does not exist")
         
         self.cap_output = CSVFile(self.output_file_name, 
-                                      "exec_id,rep,controller,replicas,time,init_size")
+                                      "exec_id,rep,controller,replicas,time,init_size,error,queue_length,processing_jobs")
         self.time_output = CSVFile(self.time_output_file_name, 
                                        "exec_id,rep,controller,execution_time,init_size")
         self.log = Log("experiment", self.log_file)
@@ -287,24 +292,57 @@ class Experiment:
                 raise KeyboardInterrupt()
             
             status = self.broker_client.get_status(job_id)
-            
+    
+    def _get_redis_port(self, job_id, kube_config, namespace="default"):
+        config.load_kube_config(kube_config)
+        k8s_client = client.CoreV1Api()
+        services_info = k8s_client.list_namespaced_service(namespace)
+        
+        for item in services_info.items:
+            if item.spec.selector != None and item.spec.selector['app'] == 'redis-' + job_id:
+                redis_port = services_info.items[1].spec.ports[0].node_port
+                return redis_port
+        
+    def _get_queue_len(self):
+        return self.redis_client.llen('job')
+    
+    def _get_processing_jobs(self):
+        return self.redis_client.llen('job:processing')
+    
+    def _get_error(self, job_id):
+        measurement = self.redis_client.lrange("%s:metrics" % job_id, -1, -1)
+    
+        if measurement is not None and len(measurement) > 0:
+            measurement = ast.literal_eval(measurement[0])
+            value = float(measurement['value'])
+            return value
+        
+    def _get_redis_client(self, job_id, kube_config_file):
+        redis_port = self._get_redis_port(job_id, kube_config_file)
+        self.redis_client = redis.StrictRedis(self.broker_client.broker_ip, redis_port)
+    
     def _wait_for_application_to_finish(self, job_id, rep, conf, init_size):
         start_time = time.time()
         
         status = self.broker_client.get_status(job_id)
+        self._get_redis_client(job_id, self.kube_config_file)
         
         while status != 'completed':
             time.sleep(self.wait_check)
-            
+
             if self.killer.kill_now:
                 self._cleanup()
                 raise KeyboardInterrupt()
             
             status = self.broker_client.get_status(job_id)
             replicas = get_number_of_replicas(self.k8s_client, job_id)
+            error = self._get_error(job_id)
+            queue_length = self._get_queue_len()
+            processing_jobs = self._get_processing_jobs()
+            
             if replicas is not None:
                 self.cap_output.writeline(job_id, rep, conf, replicas, time.time() - \
-                                                                start_time, init_size)
+                                          start_time, init_size, error, queue_length, processing_jobs)
 
         return time.time() - start_time
     
