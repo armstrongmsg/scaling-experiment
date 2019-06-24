@@ -316,6 +316,8 @@ class Experiment:
             measurement = ast.literal_eval(measurement[0])
             value = float(measurement['value'])
             return value
+        else:
+            return 0.0
         
     def _get_redis_client(self, job_id, kube_config_file):
         redis_port = self._get_redis_port(job_id, kube_config_file)
