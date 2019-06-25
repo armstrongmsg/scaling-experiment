@@ -12,12 +12,14 @@ import redis
 
 from kubernetes import client, config
 
-
 #
 #
 # Utils
 #
 #
+class BrokerException(Exception):
+    pass
+
 def zip_files(zip_name, *file_names):
     zipf = zipfile.ZipFile(zip_name, "w", zipfile.ZIP_DEFLATED)
     
@@ -91,13 +93,19 @@ def get_number_of_replicas(k8s_client, app_id, namespace="default"):
 #
 #
 class Broker_Client:
+    ERROR_STATUS = "error"
+    FAILED_STATUS = "failed"
+    TERMINATED_STATUS = "terminated"
+    ONGOING_STATUS = "ongoing"
+    COMPLETED_STATUS = "completed"
+    ERROR_STATUSES = (ERROR_STATUS, FAILED_STATUS, TERMINATED_STATUS)
+    
     def __init__(self, experiment_config):
         self.broker_ip = experiment_config.get("broker", "broker_ip")
         self.broker_port = experiment_config.get("broker", "broker_port")
         self.enable_auth = experiment_config.get("authentication", "user") == "True"
         self.user = experiment_config.get("authentication", "user")
         self.password = experiment_config.get("authentication", "password")
-        
         self.redis_client = None
 
     def get_status(self, job_id):
@@ -117,8 +125,22 @@ class Broker_Client:
         }
             
         headers = {'Content-Type': 'application/json'}
-        requests.put('http://%s:%s/submissions/%s/stop' % (self.broker_ip, self.broker_port, job_id),
+        requests.put('http://%s:%s/submissions/%s/terminate' % (self.broker_ip, self.broker_port, job_id),
                      headers=headers, data=json.dumps(body))
+        
+    def _check_error_status(self, status):
+        if status in self.ERROR_STATUSES:
+            raise BrokerException()
+        
+    def job_completed(self, job_id):
+        status = self.get_status(job_id)        
+        self._check_error_status(status)
+        return status == self.COMPLETED_STATUS
+    
+    def job_started(self, job_id):
+        status = self.get_status(job_id)
+        self._check_error_status(status)
+        return status == self.ONGOING_STATUS
     
     def submit_application(self, controller, experiment_config, init_size):
         control_parameters = controller.get_parameters()
@@ -282,16 +304,13 @@ class Experiment:
         self.broker_client.stop_application(self.job_id)
 
     def _wait_for_application_to_start(self, job_id):
-        status = self.broker_client.get_status(job_id)
-
-        while status != 'ongoing':
+        while not self.broker_client.job_started(job_id):
+            
             time.sleep(self.wait_check)
             
             if self.killer.kill_now:
                 self._cleanup()
                 raise KeyboardInterrupt()
-            
-            status = self.broker_client.get_status(job_id)
     
     def _get_redis_port(self, job_id, kube_config, namespace="default"):
         config.load_kube_config(kube_config)
@@ -322,21 +341,19 @@ class Experiment:
     def _get_redis_client(self, job_id, kube_config_file):
         redis_port = self._get_redis_port(job_id, kube_config_file)
         self.redis_client = redis.StrictRedis(self.broker_client.broker_ip, redis_port)
-    
+        
     def _wait_for_application_to_finish(self, job_id, rep, conf, init_size):
         start_time = time.time()
         
-        status = self.broker_client.get_status(job_id)
         self._get_redis_client(job_id, self.kube_config_file)
         
-        while status != 'completed':
+        while not self.broker_client.job_completed(job_id):
             time.sleep(self.wait_check)
 
             if self.killer.kill_now:
                 self._cleanup()
                 raise KeyboardInterrupt()
             
-            status = self.broker_client.get_status(job_id)
             replicas = get_number_of_replicas(self.k8s_client, job_id)
             error = self._get_error(job_id)
             queue_length = self._get_queue_len()
@@ -356,6 +373,21 @@ class Experiment:
                                     self.log_file,
                                     self.experiment_config_file)
 
+    def _run_treatment(self, rep, init_size, conf):
+        controller = self._get_controller(self.experiment_config, conf)
+        job_id = self.broker_client.submit_application(controller, 
+                                    self.experiment_config, init_size)
+        self.job_id = job_id
+        self._wait_for_application_to_start(job_id)
+        
+        execution_time = self._wait_for_application_to_finish(job_id, rep, conf, init_size)
+
+        self.time_output.writeline(job_id, rep, conf, execution_time, init_size)
+        self.log.log("Finished execution")
+        
+        time.sleep(self.wait_after_execution)
+        
+
     def run_experiment(self):
         for rep in xrange(self.reps):
             self.log.log("Rep:%d" % rep)
@@ -366,19 +398,15 @@ class Experiment:
             
                 for conf in self.scaling_confs:
                     self.log.log("Conf:%s" % conf)
-            
-                    controller = self._get_controller(self.experiment_config, conf)
-                    job_id = self.broker_client.submit_application(controller, 
-                                                self.experiment_config, init_size)
-                    self.job_id = job_id
-                    self._wait_for_application_to_start(job_id)
                     
-                    execution_time = self._wait_for_application_to_finish(job_id, rep, conf, init_size)
-
-                    self.time_output.writeline(job_id, rep, conf, execution_time, init_size)
-                    self.log.log("Finished execution")
-                    
-                    time.sleep(self.wait_after_execution)
+                    try:
+                        self._run_treatment(rep, init_size, conf)
+                    except BrokerException:
+                        log_string = ("Broker reported error in execution: "
+                                      "rep:%d init_size:%d conf:%s") % \
+                                      (rep, init_size, conf)
+                        self.log.log(log_string)
+                        print(log_string)
                     
         self._backup_experiment_data()
     
