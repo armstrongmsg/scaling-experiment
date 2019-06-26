@@ -316,15 +316,18 @@ class Experiment:
     def _cleanup(self):
         self.broker_client.stop_application(self.job_id)
 
+    def _check_keyboard_interruption(self):
+        if self.killer.kill_now:
+            self._cleanup()
+            raise KeyboardInterrupt()
+
     def _wait_for_application_to_start(self, job_id):
         while not self.broker_client.job_started(job_id):
             
             time.sleep(self.wait_check)
-            
-            if self.killer.kill_now:
-                self._cleanup()
-                raise KeyboardInterrupt()
-    
+
+            self._check_keyboard_interruption()
+
     def _get_redis_port(self, job_id, kube_config, namespace="default"):
         config.load_kube_config(kube_config)
         k8s_client = client.CoreV1Api()
@@ -369,10 +372,8 @@ class Experiment:
         while not self.broker_client.job_completed(job_id):
             time.sleep(self.wait_check)
 
-            if self.killer.kill_now:
-                self._cleanup()
-                raise KeyboardInterrupt()
-            
+            self._check_keyboard_interruption()
+
             replicas = get_number_of_replicas(self.k8s_client, job_id)
             error = self._get_error(job_id)
             queue_length = self._get_queue_len()
@@ -415,7 +416,7 @@ class Experiment:
         time.sleep(10)
         self._get_redis_client(job_id, self.kube_config_file)
 
-        number_of_tasks = self._get_queue_len()
+        number_of_tasks = self._get_queue_len() + self._get_processing_jobs()
         self._wait_for_application_to_start(job_id)
 
         completed_jobs = self._get_completed_jobs(number_of_tasks)
@@ -425,9 +426,7 @@ class Experiment:
 
             time.sleep(self.wait_check)
 
-            if self.killer.kill_now:
-                self._cleanup()
-                raise KeyboardInterrupt()
+            self._check_keyboard_interruption()
 
             completed_jobs = self._get_completed_jobs(number_of_tasks)
 
@@ -441,9 +440,7 @@ class Experiment:
 
             time.sleep(self.wait_check)
 
-            if self.killer.kill_now:
-                self._cleanup()
-                raise KeyboardInterrupt()
+            self._check_keyboard_interruption()
 
             completed_jobs = self._get_completed_jobs(number_of_tasks)
 
