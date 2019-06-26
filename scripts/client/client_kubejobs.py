@@ -87,6 +87,14 @@ def get_number_of_replicas(k8s_client, app_id, namespace="default"):
         if job.metadata.name == app_id:
             return job.spec.parallelism
 
+def set_number_of_replicas(k8s_client, app_id, replicas, namespace="default"):
+    patch_object = {"spec": {"parallelism": replicas}}
+
+    try:
+        k8s_client.patch_namespaced_job(app_id, namespace, patch_object)
+    except Exception as e:
+        print e
+
 #
 #
 # Broker API
@@ -258,13 +266,16 @@ class Experiment:
         self.experiment_config_file = experiment_config_file
         self.experiment_config = ConfigParser.RawConfigParser()  
         self.experiment_config.read(experiment_config_file)
-        
+
+        self.type = self.experiment_config.get("experiment", "type")
+
         #
         # Logging
         #
         self.kube_config_file = self.experiment_config.get("experiment", "kube_config")
         self.output_file_name = self.experiment_config.get("experiment", "output_file")
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
+        self.speedup_output_file_name = self.experiment_config.get("experiment", "speedup_output_file")
         self.log_file = self.experiment_config.get("experiment", "log_file")
         self.archive_directory = self.experiment_config.get("experiment", "archive_directory")
         
@@ -275,6 +286,8 @@ class Experiment:
                                       "exec_id,rep,controller,replicas,time,init_size,error,queue_length,processing_jobs")
         self.time_output = CSVFile(self.time_output_file_name, 
                                        "exec_id,rep,controller,execution_time,init_size")
+        self.speedup_log = CSVFile(self.speedup_output_file_name,
+                                        "exec_id,rep,completed_tasks")
         self.log = Log("experiment", self.log_file)
         
         self.k8s_client = get_k8s_client(self.kube_config_file)
@@ -327,7 +340,7 @@ class Experiment:
     
     def _get_processing_jobs(self):
         return self.redis_client.llen('job:processing')
-    
+
     def _get_error(self, job_id):
         measurement = self.redis_client.lrange("%s:metrics" % job_id, -1, -1)
     
@@ -337,6 +350,12 @@ class Experiment:
             return value
         else:
             return 0.0
+
+    def _get_completed_jobs(self, number_of_tasks):
+        queue_length = self._get_queue_len()
+        processing_jobs = self._get_processing_jobs()
+        completed_jobs = number_of_tasks - (queue_length + processing_jobs)
+        return completed_jobs
         
     def _get_redis_client(self, job_id, kube_config_file):
         redis_port = self._get_redis_port(job_id, kube_config_file)
@@ -386,30 +405,92 @@ class Experiment:
         self.log.log("Finished execution")
         
         time.sleep(self.wait_after_execution)
-        
 
-    def run_experiment(self):
+    def _run_treatment_performance(self, conf, init_replicas, second_replicas):
+        controller = self._get_controller(self.experiment_config, conf)
+        job_id = self.broker_client.submit_application(controller,
+                                                       self.experiment_config, init_replicas)
+        self.job_id = job_id
+
+        time.sleep(10)
+        self._get_redis_client(job_id, self.kube_config_file)
+
+        number_of_tasks = self._get_queue_len()
+        self._wait_for_application_to_start(job_id)
+
+        completed_jobs = self._get_completed_jobs(number_of_tasks)
+
+        while completed_jobs <= number_of_tasks/2:
+            self.speedup_log.writeline(job_id, init_replicas, completed_jobs)
+
+            time.sleep(self.wait_check)
+
+            if self.killer.kill_now:
+                self._cleanup()
+                raise KeyboardInterrupt()
+
+            completed_jobs = self._get_completed_jobs(number_of_tasks)
+
+        k8s_client = get_k8s_client(self.kube_config_file)
+        set_number_of_replicas(k8s_client, job_id, second_replicas)
+
+        completed_jobs = self._get_completed_jobs(number_of_tasks)
+
+        while not self.broker_client.job_completed(job_id):
+            self.speedup_log.writeline(job_id, init_replicas, completed_jobs)
+
+            time.sleep(self.wait_check)
+
+            if self.killer.kill_now:
+                self._cleanup()
+                raise KeyboardInterrupt()
+
+            completed_jobs = self._get_completed_jobs(number_of_tasks)
+
+    def _run_scaling_experiment(self):
         for rep in xrange(self.reps):
             self.log.log("Rep:%d" % rep)
-            
+
             for i in xrange(len(self.init_sizes)):
                 init_size = int(self.init_sizes[i])
                 self.log.log("Init size:%s" % init_size)
-            
+
                 for conf in self.scaling_confs:
                     self.log.log("Conf:%s" % conf)
-                    
+
                     try:
                         self._run_treatment(rep, init_size, conf)
                     except BrokerException:
                         log_string = ("Broker reported error in execution: "
                                       "rep:%d init_size:%d conf:%s") % \
-                                      (rep, init_size, conf)
+                                     (rep, init_size, conf)
                         self.log.log(log_string)
                         print(log_string)
-                    
+
         self._backup_experiment_data()
-    
+
+    def _run_speedup_experiment(self):
+        for rep in xrange(self.reps):
+            self.log.log("Rep:%d" % rep)
+            start_replicas = int(self.init_sizes[0])
+            end_replicas = int(self.init_sizes[1])
+
+            try:
+                self._run_treatment_performance("speeduptest", start_replicas, end_replicas)
+            except BrokerException:
+                log_string = ("Broker reported error in execution: "
+                              "rep:%d conf:%s") % \
+                             (rep, "speeduptest")
+                self.log.log(log_string)
+                print(log_string)
+
+    def run_experiment(self):
+        if self.type == "scaling":
+            self._run_scaling_experiment()
+        elif self.type == "speedup":
+            self._run_speedup_experiment()
+
+
 if __name__ == '__main__':
     experiment_config_file = sys.argv[1]
     experiment = Experiment(experiment_config_file)
