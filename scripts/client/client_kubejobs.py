@@ -276,6 +276,7 @@ class Experiment:
         self.output_file_name = self.experiment_config.get("experiment", "output_file")
         self.time_output_file_name = self.experiment_config.get("experiment", "time_output_file")
         self.speedup_output_file_name = self.experiment_config.get("experiment", "speedup_output_file")
+        self.speedup_time_output_file_name = self.experiment_config.get("experiment", "speedup_time_output_file")
         self.log_file = self.experiment_config.get("experiment", "log_file")
         self.archive_directory = self.experiment_config.get("experiment", "archive_directory")
         
@@ -287,7 +288,9 @@ class Experiment:
         self.time_output = CSVFile(self.time_output_file_name, 
                                        "exec_id,rep,controller,execution_time,init_size")
         self.speedup_log = CSVFile(self.speedup_output_file_name,
-                                        "exec_id,rep,completed_tasks")
+                                        "exec_id,rep,init_replicas,time,completed_tasks")
+        self.speedup_time = CSVFile(self.speedup_time_output_file_name,
+                                        "exec_id,rep,speedup_time")
         self.log = Log("experiment", self.log_file)
         
         self.k8s_client = get_k8s_client(self.kube_config_file)
@@ -407,7 +410,7 @@ class Experiment:
         
         time.sleep(self.wait_after_execution)
 
-    def _run_treatment_performance(self, conf, init_replicas, second_replicas):
+    def _run_treatment_performance(self, conf, rep, init_replicas, second_replicas):
         controller = self._get_controller(self.experiment_config, conf)
         job_id = self.broker_client.submit_application(controller,
                                                        self.experiment_config, init_replicas)
@@ -419,10 +422,12 @@ class Experiment:
         number_of_tasks = self._get_queue_len() + self._get_processing_jobs()
         self._wait_for_application_to_start(job_id)
 
+        start_time = time.time()
+
         completed_jobs = self._get_completed_jobs(number_of_tasks)
 
         while completed_jobs <= number_of_tasks/2:
-            self.speedup_log.writeline(job_id, init_replicas, completed_jobs)
+            self.speedup_log.writeline(job_id, rep, init_replicas, time.time() - start_time, completed_jobs)
 
             time.sleep(self.wait_check)
 
@@ -432,11 +437,12 @@ class Experiment:
 
         k8s_client = get_k8s_client(self.kube_config_file)
         set_number_of_replicas(k8s_client, job_id, second_replicas)
+        self.speedup_time.writeline(job_id, rep, time.time() - start_time)
 
         completed_jobs = self._get_completed_jobs(number_of_tasks)
 
         while not self.broker_client.job_completed(job_id):
-            self.speedup_log.writeline(job_id, init_replicas, completed_jobs)
+            self.speedup_log.writeline(job_id, rep, init_replicas, time.time() - start_time, completed_jobs)
 
             time.sleep(self.wait_check)
 
@@ -473,7 +479,7 @@ class Experiment:
             end_replicas = int(self.init_sizes[1])
 
             try:
-                self._run_treatment_performance("speeduptest", start_replicas, end_replicas)
+                self._run_treatment_performance("speeduptest", rep, start_replicas, end_replicas)
             except BrokerException:
                 log_string = ("Broker reported error in execution: "
                               "rep:%d conf:%s") % \

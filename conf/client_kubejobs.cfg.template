@@ -19,6 +19,7 @@ kube_config =
 output_file = 
 time_output_file =
 speedup_output_file =
+speedup_time_output_file =
 log_file = 
 archive_directory = 
 confs = 
