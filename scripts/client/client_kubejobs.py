@@ -396,6 +396,13 @@ class Experiment:
                                     self.log_file,
                                     self.experiment_config_file)
 
+    def _backup_performance_experiment_data(self):
+        archive_filename = os.path.join(self.archive_directory,
+                                        "%s.zip" % (time.strftime("%Y%m%d-%H%M%S")))
+        zip_files(archive_filename, self.speedup_output_file_name,
+                                    self.speedup_time_output_file_name,
+                                    self.log_file)
+
     def _run_treatment(self, rep, init_size, conf):
         controller = self._get_controller(self.experiment_config, conf)
         job_id = self.broker_client.submit_application(controller, 
@@ -488,6 +495,8 @@ class Experiment:
                              (rep, "speeduptest")
                 self.log.log(log_string)
                 print(log_string)
+
+        self._backup_performance_experiment_data()
 
     def run_experiment(self):
         if self.type == "scaling":
