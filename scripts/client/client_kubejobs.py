@@ -416,7 +416,7 @@ class Experiment:
                                                        self.experiment_config, init_replicas)
         self.job_id = job_id
 
-        time.sleep(10)
+        time.sleep(20)
         self._get_redis_client(job_id, self.kube_config_file)
 
         number_of_tasks = self._get_queue_len() + self._get_processing_jobs()
@@ -426,7 +426,7 @@ class Experiment:
 
         completed_jobs = self._get_completed_jobs(number_of_tasks)
 
-        while completed_jobs <= number_of_tasks/2:
+        while completed_jobs <= number_of_tasks/3:
             self.speedup_log.writeline(job_id, rep, init_replicas, time.time() - start_time, completed_jobs)
 
             time.sleep(self.wait_check)
@@ -449,6 +449,8 @@ class Experiment:
             self._check_keyboard_interruption()
 
             completed_jobs = self._get_completed_jobs(number_of_tasks)
+
+        time.sleep(self.wait_after_execution)
 
     def _run_scaling_experiment(self):
         for rep in xrange(self.reps):
