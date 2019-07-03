@@ -1,5 +1,6 @@
 library(ggplot2)
 library(dplyr)
+library(gridExtra)
 
 theme_white <- function() {
   theme_update(
@@ -20,10 +21,12 @@ theme_white()
 caps <- read.csv("cap.csv")
 times <- read.csv("time.csv")
 
-deadline <- 749
+#deadline <- 749
+deadline <- 1783
 
 ggplot(times, aes(controller, execution_time)) + 
   geom_boxplot() +
+  geom_point() +
   geom_hline(yintercept = deadline, color = "red") +
   xlab("Controller") +
   ylab("Execution time (s)")
@@ -45,3 +48,11 @@ ggplot(caps, aes(time, calculated_replicas, group = exec_id)) +
   ylab("Replicas")
 
 ggsave("replicas_calculated.png")
+
+ggplot(caps, aes(time, error, group = exec_id)) + 
+  geom_line() + 
+  facet_grid(controller ~ .) +
+  xlab("Time (s)") +
+  ylab("Progress error")
+  
+ggsave("progress_error.png")
