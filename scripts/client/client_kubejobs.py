@@ -167,7 +167,9 @@ class Broker_Client:
             "plugin":"kubejobs",
             "username":self.user,
             "password":self.password,
-            "plugin_info":{  
+            "plugin_info":{
+                "username": self.user,
+                "password": self.password,
                 "cmd":command,
                 "img":image_name,
                 "init_size":init_size,
@@ -178,9 +180,11 @@ class Broker_Client:
                 "monitor_plugin":"kubejobs",
                 "monitor_info":monitor_parameters,
                 #TODO: this should be read from the config file
-                "enable_visualizer":False,
+                "enable_visualizer":True,
                 "visualizer_plugin":"k8s-grafana",
-                "visualizer_info":{},
+                "visualizer_info":{
+                    "datasource_type": "influxdb"
+                },
                 "env_vars":{}
             },
             "enable_auth":self.enable_auth
@@ -335,11 +339,14 @@ class Experiment:
         config.load_kube_config(kube_config)
         k8s_client = client.CoreV1Api()
         services_info = k8s_client.list_namespaced_service(namespace)
-        
-        for item in services_info.items:
-            if item.spec.selector != None and item.spec.selector['app'] == 'redis-' + job_id:
-                redis_port = services_info.items[1].spec.ports[0].node_port
-                return redis_port
+
+        while True:
+            self._check_keyboard_interruption()
+            for item in services_info.items:
+                if item.spec.selector is not None and item.spec.selector['app'] == 'redis-' + job_id:
+                    redis_port = item.spec.ports[0].node_port
+                    return redis_port
+            time.sleep(1)
         
     def _get_queue_len(self):
         return self.redis_client.llen('job')
@@ -366,7 +373,22 @@ class Experiment:
     def _get_redis_client(self, job_id, kube_config_file):
         redis_port = self._get_redis_port(job_id, kube_config_file)
         self.redis_client = redis.StrictRedis(self.broker_client.broker_ip, redis_port)
-        
+
+    def _wait_for_redis(self):
+        print("Waiting for redis")
+
+        redis_ready = False
+        while not redis_ready:
+            try:
+                time.sleep(1)
+                self._check_keyboard_interruption()
+                self._get_queue_len()
+                redis_ready = True
+            except Exception:
+                pass
+
+        print("Redis is ready")
+
     def _wait_for_application_to_finish(self, job_id, rep, conf, init_size):
         start_time = time.time()
         
@@ -423,8 +445,13 @@ class Experiment:
                                                        self.experiment_config, init_replicas)
         self.job_id = job_id
 
-        time.sleep(20)
         self._get_redis_client(job_id, self.kube_config_file)
+        self._wait_for_redis()
+
+        # Checks if the workload has been loaded on redis
+        while not self._get_queue_len() > 0:
+            self._check_keyboard_interruption()
+            time.sleep(1)
 
         number_of_tasks = self._get_queue_len() + self._get_processing_jobs()
         self._wait_for_application_to_start(job_id)
