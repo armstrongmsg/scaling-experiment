@@ -559,6 +559,6 @@ if __name__ == '__main__':
         print("Stopping execution at user request")
         if experiment is not None:
             experiment.log.log("Stopping execution at user request")
-    finally:
+    except Exception:
         if experiment is not None:
             experiment._cleanup()
