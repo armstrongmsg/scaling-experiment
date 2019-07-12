@@ -149,14 +149,27 @@ class Broker_Client:
         status = self.get_status(job_id)
         self._check_error_status(status)
         return status == self.ONGOING_STATUS
-    
+
+    def _get_env_vars(self, experiment_config):
+        env_vars = {}
+
+        if experiment_config.has_section("env_vars"):
+            for option in experiment_config.options("env_vars"):
+                env_vars[option] = experiment_config.get("env_vars", option)
+
+        return env_vars
+
     def submit_application(self, controller, experiment_config, init_size):
         control_parameters = controller.get_parameters()
         expected_time = int(experiment_config.get("application", "expected_time"))
         image_name = experiment_config.get("application", "image_name")
         redis_workload = experiment_config.get("application", "redis_workload")
         application_command = experiment_config.get("application", "command")
-        command = [ application_command ]
+        command = application_command.split(",")
+        command = [c.strip() for c in command]
+
+        env_vars = self._get_env_vars(experiment_config)
+
 
         monitor_parameters = {
             "expected_time":expected_time, 
@@ -185,16 +198,19 @@ class Broker_Client:
                 "visualizer_info":{
                     "datasource_type": "influxdb"
                 },
-                "env_vars":{}
+                "env_vars":env_vars
+
+
             },
             "enable_auth":self.enable_auth
         }
-    
+
         url = "http://%s:%s/submissions" % (self.broker_ip, self.broker_port)
         
         headers = {'Content-Type': 'application/json'}
         r = requests.post(url, headers=headers, data=json.dumps(body))
         return r.json()["job_id"]
+
 
 #
 #
@@ -268,7 +284,8 @@ class Experiment:
     def __init__(self, experiment_config_file):
         self.killer = GracefulKiller()
         self.experiment_config_file = experiment_config_file
-        self.experiment_config = ConfigParser.RawConfigParser()  
+        self.experiment_config = ConfigParser.RawConfigParser()
+        self.experiment_config.optionxform = str
         self.experiment_config.read(experiment_config_file)
 
         self.type = self.experiment_config.get("experiment", "type")
