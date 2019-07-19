@@ -316,6 +316,7 @@ class Experiment:
         
         self.k8s_client = get_k8s_client(self.kube_config_file)
         self.broker_client = Broker_Client(self.experiment_config)
+        self.redis_ip = self.experiment_config.get("broker", "redis_ip")
         
         #
         # Experiment config
@@ -389,7 +390,7 @@ class Experiment:
         
     def _get_redis_client(self, job_id, kube_config_file):
         redis_port = self._get_redis_port(job_id, kube_config_file)
-        self.redis_client = redis.StrictRedis(self.broker_client.broker_ip, redis_port)
+        self.redis_client = redis.StrictRedis(self.redis_ip, redis_port)
 
     def _wait_for_redis(self):
         print("Waiting for redis")
